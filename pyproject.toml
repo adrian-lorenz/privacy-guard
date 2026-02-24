@@ -1,13 +1,32 @@
 [project]
-name = "privacy-guard"
+name = "privacy-guard-scanner"
 version = "0.1.0"
 description = "DSGVO-konformes Erkennen und Ersetzen von PII in LLM-Prompts"
 license = "MIT"
+readme = "README.md"
 requires-python = ">=3.12"
+authors = [
+    { name = "Adrian Lorenz", email = "github@noa-x.de" },
+]
+keywords = ["privacy", "pii", "gdpr", "dsgvo", "anonymization", "nlp", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Text Processing :: Linguistic",
+    "Topic :: Security",
+    "Natural Language :: German",
+]
 dependencies = [
     "spacy>=3.8.11",
-    "de-core-news-sm",
 ]
+
+[project.urls]
+Homepage = "https://github.com/noa-x/privacy-guard"
+Repository = "https://github.com/noa-x/privacy-guard"
+Issues = "https://github.com/noa-x/privacy-guard/issues"
 
 [build-system]
 requires = ["hatchling"]
@@ -20,9 +39,6 @@ packages = ["privacy_guard"]
 include = [
     "privacy_guard/**",
 ]
-
-[tool.uv.sources]
-de-core-news-sm = { url = "https://github.com/explosion/spacy-models/releases/download/de_core_news_sm-3.8.0/de_core_news_sm-3.8.0-py3-none-any.whl" }
 
 [dependency-groups]
 dev = [

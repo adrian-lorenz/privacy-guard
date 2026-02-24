@@ -19,12 +19,22 @@ _nlp: spacy.language.Language | None = None
 def _get_nlp() -> spacy.language.Language:
     global _nlp
     if _nlp is None:
-        # Disable pipeline components not needed for NER.
-        # tok2vec must stay active because ner depends on its vectors.
-        _nlp = spacy.load(
-            "de_core_news_sm",
-            disable=["tagger", "morphologizer", "parser", "lemmatizer", "attribute_ruler"],
-        )
+        try:
+            # Disable pipeline components not needed for NER.
+            # tok2vec must stay active because ner depends on its vectors.
+            _nlp = spacy.load(
+                "de_core_news_sm",
+                disable=["tagger", "morphologizer", "parser", "lemmatizer", "attribute_ruler"],
+            )
+        except OSError as exc:
+            raise OSError(
+                "Das spaCy-Modell 'de_core_news_sm' ist nicht installiert.\n"
+                "Bitte installieren:\n"
+                "  pip install "
+                "\"de_core_news_sm @ https://github.com/explosion/spacy-models/releases/"
+                "download/de_core_news_sm-3.8.0/de_core_news_sm-3.8.0-py3-none-any.whl\"\n"
+                "oder:  python -m spacy download de_core_news_sm"
+            ) from exc
     return _nlp
 
 
