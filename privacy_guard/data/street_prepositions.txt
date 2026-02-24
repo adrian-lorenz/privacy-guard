@@ -1,0 +1,45 @@
+# Straßenpräpositionen DACH — ein Ausdruck pro Zeile, Kommentare mit #
+# Leerzeichen werden im Regex zu \s+ (erlaubt beliebige Whitespace-Menge)
+
+# Einfache Präpositionen
+Im
+Am
+Beim
+Zur
+Zum
+
+# Zweiteilige Präpositionen
+An der
+An dem
+An den
+An die
+Auf der
+Auf dem
+Auf den
+Auf die
+Bei der
+Bei dem
+Bei den
+In der
+In dem
+In den
+In die
+Unter der
+Unter dem
+Unter den
+Unter die
+Hinter dem
+Hinter der
+Hinter den
+Hinter die
+Neben dem
+Neben der
+Vor dem
+Vor der
+Vor den
+Vor die
+Zu den
+
+# Österreichisch / Schweiz
+Ob der
+Ob dem
