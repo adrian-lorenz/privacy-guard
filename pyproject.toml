@@ -2,6 +2,7 @@
 name = "privacy-guard"
 version = "0.1.0"
 description = "DSGVO-konformes Erkennen und Ersetzen von PII in LLM-Prompts"
+license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
     "spacy>=3.8.11",
