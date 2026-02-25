@@ -15,7 +15,6 @@ def test_german_address(detector):
     assert "Hauptstraße" in f.text
     assert "10115" in f.text
     assert f.confidence == 0.9
-    assert f.placeholder == "[ADDRESS_1]"
 
 
 def test_austrian_address(detector):

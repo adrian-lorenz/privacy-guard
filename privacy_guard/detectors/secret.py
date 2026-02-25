@@ -21,10 +21,10 @@ _DATA_DIR = Path(__file__).parent.parent / "data"
 
 _SEVERITY_CONFIDENCE: dict[str, float] = {
     "CRITICAL": 1.0,
-    "HIGH":     0.9,
-    "MEDIUM":   0.75,
-    "LOW":      0.6,
-    "WARNING":  0.5,
+    "HIGH": 0.9,
+    "MEDIUM": 0.75,
+    "LOW": 0.6,
+    "WARNING": 0.5,
 }
 
 
@@ -47,14 +47,16 @@ def _load_rules() -> list[_Rule]:
         flags = re.UNICODE
         if r.get("multiline"):
             flags |= re.MULTILINE
-        rules.append(_Rule(
-            id=r["id"],
-            description=r["description"],
-            pattern=re.compile(r["pattern"], flags),
-            secret_group=r["secret_group"],
-            severity=r["severity"],
-            tags=tuple(r.get("tags", [])),
-        ))
+        rules.append(
+            _Rule(
+                id=r["id"],
+                description=r["description"],
+                pattern=re.compile(r["pattern"], flags),
+                secret_group=r["secret_group"],
+                severity=r["severity"],
+                tags=tuple(r.get("tags", [])),
+            )
+        )
     return rules
 
 
@@ -66,7 +68,6 @@ class SecretDetector(BaseDetector):
 
     def detect(self, text: str) -> list[Finding]:
         findings: list[Finding] = []
-        counter: dict[str, int] = {}
 
         for rule in _RULES:
             for match in rule.pattern.finditer(text):
@@ -81,18 +82,16 @@ class SecretDetector(BaseDetector):
                 if not secret_text:
                     continue
 
-                key = PiiType.SECRET.value
-                counter[key] = counter.get(key, 0) + 1
-                placeholder = f"[{key}_{counter[key]}]"
-
-                findings.append(Finding(
-                    pii_type=PiiType.SECRET,
-                    start=start,
-                    end=end,
-                    text=secret_text,
-                    confidence=_SEVERITY_CONFIDENCE.get(rule.severity, 0.8),
-                    placeholder=placeholder,
-                    rule_id=rule.id,
-                ))
+                findings.append(
+                    Finding(
+                        pii_type=PiiType.SECRET,
+                        start=start,
+                        end=end,
+                        text=secret_text,
+                        confidence=_SEVERITY_CONFIDENCE.get(rule.severity, 0.8),
+                        placeholder="",
+                        rule_id=rule.id,
+                    )
+                )
 
         return findings

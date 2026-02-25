@@ -13,7 +13,6 @@ def test_basic_email(detector):
     assert len(findings) == 1
     assert findings[0].text == "hans.mueller@example.de"
     assert findings[0].confidence == 1.0
-    assert findings[0].placeholder == "[EMAIL_1]"
 
 
 def test_email_with_plus(detector):
@@ -33,8 +32,8 @@ def test_multiple_emails(detector):
     text = "Von: a@example.de, An: b@example.at"
     findings = detector.detect(text)
     assert len(findings) == 2
-    assert findings[0].placeholder == "[EMAIL_1]"
-    assert findings[1].placeholder == "[EMAIL_2]"
+    assert findings[0].text == "a@example.de"
+    assert findings[1].text == "b@example.at"
 
 
 def test_no_false_positive(detector):

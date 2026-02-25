@@ -36,24 +36,21 @@ def _digit_count(s: str) -> int:
 class PhoneDetector(BaseDetector):
     def detect(self, text: str) -> list[Finding]:
         findings: list[Finding] = []
-        counter: dict[str, int] = {}
 
         for match in _PHONE_RE.finditer(text):
             raw = match.group(0).rstrip()
             if _digit_count(raw) < _MIN_DIGITS:
                 continue
 
-            key = PiiType.PHONE.value
-            counter[key] = counter.get(key, 0) + 1
-            placeholder = f"[{key}_{counter[key]}]"
-
-            findings.append(Finding(
-                pii_type=PiiType.PHONE,
-                start=match.start(),
-                end=match.start() + len(raw),
-                text=raw,
-                confidence=1.0,
-                placeholder=placeholder,
-            ))
+            findings.append(
+                Finding(
+                    pii_type=PiiType.PHONE,
+                    start=match.start(),
+                    end=match.start() + len(raw),
+                    text=raw,
+                    confidence=1.0,
+                    placeholder="",
+                )
+            )
 
         return findings

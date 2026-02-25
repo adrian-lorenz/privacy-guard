@@ -12,7 +12,6 @@ def test_german_mobile(detector):
     findings = detector.detect(text)
     assert len(findings) == 1
     assert findings[0].confidence == 1.0
-    assert findings[0].placeholder == "[PHONE_1]"
 
 
 def test_german_landline(detector):
@@ -52,9 +51,8 @@ def test_multiple_phones(detector):
     assert len(findings) == 2
 
 
-def test_placeholder_numbering(detector):
+def test_multiple_numbers_detected(detector):
     text = "A: +49 30 12345678, B: +49 89 98765432"
     findings = detector.detect(text)
-    placeholders = [f.placeholder for f in findings]
-    assert "[PHONE_1]" in placeholders
-    assert "[PHONE_2]" in placeholders
+    assert len(findings) == 2
+    assert findings[0].text != findings[1].text

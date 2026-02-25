@@ -6,6 +6,10 @@ from .name import NameDetector
 from .address import AddressDetector
 
 __all__ = [
-    "BaseDetector", "IbanDetector", "PhoneDetector",
-    "EmailDetector", "NameDetector", "AddressDetector",
+    "BaseDetector",
+    "IbanDetector",
+    "PhoneDetector",
+    "EmailDetector",
+    "NameDetector",
+    "AddressDetector",
 ]

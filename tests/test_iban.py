@@ -14,7 +14,6 @@ def test_valid_german_iban(detector):
     f = findings[0]
     assert f.text == "DE89 3704 0044 0532 0130 00"
     assert f.confidence == 1.0
-    assert f.placeholder == "[IBAN_1]"
 
 
 def test_valid_austrian_iban(detector):

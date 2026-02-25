@@ -1,0 +1,9 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    # Optional environment variables:
+    #   API_KEY: changeme                                              (enables X-API-Key auth)
+    #   CORS_ORIGINS: https://myapp.example.com,https://other.example.com
