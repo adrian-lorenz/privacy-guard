@@ -15,7 +15,6 @@ def test_basic_name(detector):
     f = findings[0]
     assert f.text == "Mia Klaiber"
     assert f.confidence == 0.85
-    assert f.placeholder == "[NAME_1]"
 
 
 def test_name_with_title_dr(detector):

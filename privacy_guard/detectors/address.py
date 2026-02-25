@@ -11,9 +11,7 @@ def _load_lines(path: Path) -> list[str]:
     """Read non-empty, non-comment lines from a data file."""
     with path.open(encoding="utf-8") as fh:
         return [
-            line.strip()
-            for line in fh
-            if line.strip() and not line.startswith("#")
+            line.strip() for line in fh if line.strip() and not line.startswith("#")
         ]
 
 
@@ -75,20 +73,17 @@ class AddressDetector(BaseDetector):
             return []
 
         findings: list[Finding] = []
-        counter: dict[str, int] = {}
 
         for match in _ADDRESS_PATTERN.finditer(text):
-            key = PiiType.ADDRESS.value
-            counter[key] = counter.get(key, 0) + 1
-            placeholder = f"[{key}_{counter[key]}]"
-
-            findings.append(Finding(
-                pii_type=PiiType.ADDRESS,
-                start=match.start(),
-                end=match.end(),
-                text=match.group(0),
-                confidence=0.9,
-                placeholder=placeholder,
-            ))
+            findings.append(
+                Finding(
+                    pii_type=PiiType.ADDRESS,
+                    start=match.start(),
+                    end=match.end(),
+                    text=match.group(0),
+                    confidence=0.9,
+                    placeholder="",
+                )
+            )
 
         return findings

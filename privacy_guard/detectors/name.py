@@ -24,15 +24,21 @@ def _get_nlp() -> spacy.language.Language:
             # tok2vec must stay active because ner depends on its vectors.
             _nlp = spacy.load(
                 "de_core_news_sm",
-                disable=["tagger", "morphologizer", "parser", "lemmatizer", "attribute_ruler"],
+                disable=[
+                    "tagger",
+                    "morphologizer",
+                    "parser",
+                    "lemmatizer",
+                    "attribute_ruler",
+                ],
             )
         except OSError as exc:
             raise OSError(
                 "Das spaCy-Modell 'de_core_news_sm' ist nicht installiert.\n"
                 "Bitte installieren:\n"
                 "  pip install "
-                "\"de_core_news_sm @ https://github.com/explosion/spacy-models/releases/"
-                "download/de_core_news_sm-3.8.0/de_core_news_sm-3.8.0-py3-none-any.whl\"\n"
+                '"de_core_news_sm @ https://github.com/explosion/spacy-models/releases/'
+                'download/de_core_news_sm-3.8.0/de_core_news_sm-3.8.0-py3-none-any.whl"\n'
                 "oder:  python -m spacy download de_core_news_sm"
             ) from exc
     return _nlp
@@ -56,7 +62,6 @@ class NameDetector(BaseDetector):
         nlp = _get_nlp()
         doc = nlp(text)
         findings: list[Finding] = []
-        counter: dict[str, int] = {}
 
         for ent in doc.ents:
             if ent.label_ != "PER":
@@ -69,19 +74,15 @@ class NameDetector(BaseDetector):
             if self._whitelist.is_whitelisted(full_text):
                 continue
 
-            confidence = 0.95 if has_title else 0.85
-
-            key = PiiType.NAME.value
-            counter[key] = counter.get(key, 0) + 1
-            placeholder = f"[{key}_{counter[key]}]"
-
-            findings.append(Finding(
-                pii_type=PiiType.NAME,
-                start=start,
-                end=end,
-                text=full_text,
-                confidence=confidence,
-                placeholder=placeholder,
-            ))
+            findings.append(
+                Finding(
+                    pii_type=PiiType.NAME,
+                    start=start,
+                    end=end,
+                    text=full_text,
+                    confidence=0.95 if has_title else 0.85,
+                    placeholder="",
+                )
+            )
 
         return findings
