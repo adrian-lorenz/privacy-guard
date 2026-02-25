@@ -90,19 +90,24 @@ for s in secrets:
 
 ## REST-API (Docker)
 
-Das Repo enthält eine FastAPI-Oberfläche, die als Docker-Image bereitgestellt wird.
+Das Repo enthält eine FastAPI-Oberfläche, die als Docker-Image auf Docker Hub bereitgestellt wird.
+
+[![Docker Hub](https://img.shields.io/docker/v/noxway/privacy-guard?label=Docker%20Hub&logo=docker)](https://hub.docker.com/r/noxway/privacy-guard)
 
 ### Schnellstart
 
 ```bash
-docker run -p 8000:8000 <dockerhub-user>/privacy-guard:latest
+# Image direkt von Docker Hub ziehen und starten:
+docker run -p 8000:8000 noxway/privacy-guard:latest
 ```
 
-Oder mit `docker compose` (startet aus dem geklonten Repo und baut das Image lokal):
+Oder mit `docker compose` (zieht das Image automatisch von Docker Hub):
 
 ```bash
 docker compose up
 ```
+
+Wer das Image lieber lokal bauen möchte, ersetzt in `docker-compose.yml` die Zeile `image:` durch `build: .`.
 
 ### Endpunkte
 

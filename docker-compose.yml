@@ -1,6 +1,8 @@
 services:
   api:
-    build: .
+    image: noxway/privacy-guard:latest
+    # To build locally instead, replace the image line above with:
+    # build: .
     ports:
       - "8000:8000"
     restart: unless-stopped

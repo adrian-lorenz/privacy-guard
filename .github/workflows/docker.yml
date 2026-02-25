@@ -30,3 +30,12 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/privacy-guard:${{ steps.version.outputs.value }}
             ${{ secrets.DOCKERHUB_USERNAME }}/privacy-guard:latest
+
+      - name: Update Docker Hub description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/privacy-guard
+          readme-filepath: ./README.md
+          short-description: "DSGVO/GDPR PII scanner & anonymizer for German text — regex-based, no ML inference at runtime"
