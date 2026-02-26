@@ -21,13 +21,21 @@ classifiers = [
 ]
 dependencies = [
     "spacy>=3.8.11",
+    "uvicorn>=0.41.0",
 ]
 
 [project.optional-dependencies]
 api = [
     "pydantic>=2.0",
-    "fastapi>=0.115",
+    "fastapi>=0.133.1",
     "uvicorn[standard]>=0.34",
+]
+ui = [
+    "streamlit>=1.54.0",
+    "bcrypt>=4.0",
+    "httpx>=0.27",
+    "pandas>=1.4.0",
+    "pyarrow>=20.0",
 ]
 
 [project.urls]
@@ -51,7 +59,7 @@ include = [
 dev = [
     "pytest>=9.0.2",
     "pyright==1.1.408",
-    "ruff==0.15.2",
+    "ruff==0.15.4",
     "httpx>=0.27",
     "fastapi>=0.115",
 ]

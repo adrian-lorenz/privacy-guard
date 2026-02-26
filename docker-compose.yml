@@ -9,3 +9,27 @@ services:
     # Optional environment variables:
     #   API_KEY: changeme                                              (enables X-API-Key auth)
     #   CORS_ORIGINS: https://myapp.example.com,https://other.example.com
+
+  # ── Streamlit Dashboard (opt-in) ──────────────────────────────────────────
+  # Start with:  docker compose --profile ui up
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    profiles:
+      - ui
+    ports:
+      - "8501:8501"
+    environment:
+      API_BASE_URL: http://api:8000
+      API_KEY: ""                     # set to match the api service's API_KEY
+      UI_DB_PATH: /data/ui.db
+      UI_ADMIN_PASSWORD: admin        # change on first deploy
+    volumes:
+      - ui_data:/data
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  ui_data:
