@@ -13,7 +13,7 @@ class WhitelistManager:
     def __init__(self, extra_names: list[str] | None = None) -> None:
         self._names: set[str] = set()
         self._load_file(_DATA_DIR / "public_figures.txt")
-        for name in (extra_names or []):
+        for name in extra_names or []:
             self._names.add(name.strip().lower())
 
     def _load_file(self, path: Path) -> None:

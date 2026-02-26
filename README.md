@@ -27,21 +27,28 @@ Kein ML-Inference-Overhead zur Laufzeit für die meisten Detektoren, klare Ergeb
 - Schützt sensible Daten **vor** dem Versand an externe Modelle
 - Ersetzt PII durch deterministische Platzhalter wie `[NAME_1]`, `[IBAN_1]`
 - Stellt Originalwerte mit `ScanResult.restore()` wieder her
-- Löst überlappende Treffer mit Prioritätslogik (z. B. `SECRET > IBAN > EMAIL > ...`)
+- Löst überlappende Treffer mit Prioritätslogik (z. B. `SECRET > IBAN > SOCIAL_SECURITY > EMAIL > ...`)
 - Unterstützt Python-Package und FastAPI/Docker-Betrieb
 
 ## Erfasste PII-Typen
 
-| Typ | Beispiel | Hinweis |
+| Typ | Beispiel | Methode |
 |---|---|---|
-| `NAME` | `Dr. Anna Schmidt` | via spaCy NER (`de_core_news_sm`) |
-| `IBAN` | `DE89 3704 0044 0532 0130 00` | inkl. ISO-7064-Prüfung |
-| `PHONE` | `+49 89 12345678` | deutschsprachige Formate |
-| `EMAIL` | `kontakt@example.de` | RFC-nahe Muster |
-| `ADDRESS` | `Hauptstraße 12, 79100 Freiburg` | regelbasiert |
-| `SECRET` | API-Keys, Tokens, Passwörter | 100+ Musterregeln |
+| `NAME` | `Dr. Anna Schmidt` | spaCy NER (`de_core_news_sm`) |
+| `IBAN` | `DE89 3704 0044 0532 0130 00` | Regex + ISO-7064-Prüfziffer |
+| `CREDIT_CARD` | `4111 1111 1111 1111` | Regex + Luhn-Algorithmus |
+| `PERSONAL_ID` | `C22990047` | Regex — Personalausweis & Reisepass (gleiches Format) |
+| `SOCIAL_SECURITY` | `12 345678 X 123` | Regex — Rentenversicherungsnummer |
+| `TAX_ID` | `12 345 678 903` | Regex + mod-11-Prüfziffer (§ 139b AO) |
+| `PHONE` | `+49 89 12345678` | Regex — DACH-Formate |
+| `EMAIL` | `kontakt@example.de` | Regex |
+| `ADDRESS` | `Hauptstraße 12, 79100 Freiburg` | Regex aus Daten-Dateien |
+| `SECRET` | AWS-Key, GitHub-PAT, … | 100+ Musterregeln (TOML) |
+| `URL_SECRET` | `?token=abc123def456` | Regex — Query-Parameter-Werte |
 
-Zusätzlich: Personen des öffentlichen Lebens werden per interner Liste standardmäßig nicht maskiert.
+**Priorität bei überlappenden Treffern:** `SECRET = URL_SECRET > IBAN = CREDIT_CARD = SOCIAL_SECURITY > PERSONAL_ID = TAX_ID = EMAIL > PHONE > ADDRESS > NAME`
+
+Personen des öffentlichen Lebens werden per interner Whitelist (~1 000 Einträge) standardmäßig nicht maskiert.
 
 ## Installation
 
@@ -175,6 +182,7 @@ services:
 - Verbesserte Entitäten-Erkennung für Adressen in DACH-Varianten
 - Optionales Audit-Logging für Compliance-Reports
 - Erweiterte Mehrsprachigkeit über Deutsch hinaus
+- Prüfziffernvalidierung für Personalausweis/Reisepass
 
 ## Lizenz
 

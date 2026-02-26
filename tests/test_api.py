@@ -45,7 +45,14 @@ def test_scan_email(client: TestClient) -> None:
 def test_scan_returns_findings_structure(client: TestClient) -> None:
     r = client.post("/scan", json={"text": "IBAN DE89370400440532013000"})
     finding = r.json()["findings"][0]
-    assert {"start", "end", "text", "pii_type", "confidence", "placeholder"} <= finding.keys()
+    assert {
+        "start",
+        "end",
+        "text",
+        "pii_type",
+        "confidence",
+        "placeholder",
+    } <= finding.keys()
 
 
 # ---------------------------------------------------------------------------
@@ -56,7 +63,10 @@ def test_scan_returns_findings_structure(client: TestClient) -> None:
 def test_scan_detector_filter_keeps_selected(client: TestClient) -> None:
     r = client.post(
         "/scan",
-        json={"text": "IBAN DE89370400440532013000 und test@example.com", "detectors": ["IBAN"]},
+        json={
+            "text": "IBAN DE89370400440532013000 und test@example.com",
+            "detectors": ["IBAN"],
+        },
     )
     assert r.status_code == 200
     pii_types = {f["pii_type"] for f in r.json()["findings"]}
@@ -77,11 +87,16 @@ def test_scan_detector_filter_invalid_value(client: TestClient) -> None:
 def test_scan_whitelist_suppresses_name(client: TestClient) -> None:
     r = client.post(
         "/scan",
-        json={"text": "Kontaktiere Max Mustermann wegen IBAN DE89370400440532013000", "whitelist": ["Max Mustermann"]},
+        json={
+            "text": "Kontaktiere Max Mustermann wegen IBAN DE89370400440532013000",
+            "whitelist": ["Max Mustermann"],
+        },
     )
     assert r.status_code == 200
     findings = r.json()["findings"]
-    names = [f for f in findings if f["pii_type"] == "NAME" and f["text"] == "Max Mustermann"]
+    names = [
+        f for f in findings if f["pii_type"] == "NAME" and f["text"] == "Max Mustermann"
+    ]
     assert names == []
 
 
@@ -101,7 +116,10 @@ def test_anonymize_returns_only_text(client: TestClient) -> None:
 def test_anonymize_detector_filter(client: TestClient) -> None:
     r = client.post(
         "/anonymize",
-        json={"text": "IBAN DE89370400440532013000 und test@example.com", "detectors": ["EMAIL"]},
+        json={
+            "text": "IBAN DE89370400440532013000 und test@example.com",
+            "detectors": ["EMAIL"],
+        },
     )
     assert r.status_code == 200
     text = r.json()["anonymised_text"]

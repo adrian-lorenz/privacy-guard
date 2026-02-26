@@ -7,12 +7,22 @@ from .detectors.phone import PhoneDetector
 from .detectors.email import EmailDetector
 from .detectors.name import NameDetector
 from .detectors.address import AddressDetector
+from .detectors.credit_card import CreditCardDetector
+from .detectors.personal_id import PersonalIdDetector
+from .detectors.social_security import SocialSecurityDetector
+from .detectors.tax_id import TaxIdDetector
+from .detectors.url_secret import UrlSecretDetector
 from .detectors.secret import SecretDetector
 
 # Priority: higher wins when spans overlap
 _PRIORITY: dict[PiiType, int] = {
     PiiType.SECRET: 6,
+    PiiType.URL_SECRET: 6,
     PiiType.IBAN: 5,
+    PiiType.CREDIT_CARD: 5,
+    PiiType.SOCIAL_SECURITY: 5,
+    PiiType.PERSONAL_ID: 4,
+    PiiType.TAX_ID: 4,
     PiiType.EMAIL: 4,
     PiiType.PHONE: 3,
     PiiType.ADDRESS: 2,
@@ -59,7 +69,12 @@ class PrivacyScanner:
         self._whitelist = wl
         self._detectors: dict[PiiType, BaseDetector] = {
             PiiType.SECRET: SecretDetector(),
+            PiiType.URL_SECRET: UrlSecretDetector(),
             PiiType.IBAN: IbanDetector(),
+            PiiType.CREDIT_CARD: CreditCardDetector(),
+            PiiType.SOCIAL_SECURITY: SocialSecurityDetector(),
+            PiiType.PERSONAL_ID: PersonalIdDetector(),
+            PiiType.TAX_ID: TaxIdDetector(),
             PiiType.EMAIL: EmailDetector(),
             PiiType.PHONE: PhoneDetector(),
             PiiType.NAME: NameDetector(whitelist=wl),
@@ -100,15 +115,17 @@ class PrivacyScanner:
                 placeholder = f"[{key}_{type_counters[key]}]"
                 text_to_placeholder[original] = placeholder
 
-            final_findings.append(Finding(
-                pii_type=finding.pii_type,
-                start=finding.start,
-                end=finding.end,
-                text=original,
-                confidence=finding.confidence,
-                placeholder=placeholder,
-                rule_id=finding.rule_id,
-            ))
+            final_findings.append(
+                Finding(
+                    pii_type=finding.pii_type,
+                    start=finding.start,
+                    end=finding.end,
+                    text=original,
+                    confidence=finding.confidence,
+                    placeholder=placeholder,
+                    rule_id=finding.rule_id,
+                )
+            )
 
         # Build mapping: placeholder → original
         mapping: dict[str, str] = {v: k for k, v in text_to_placeholder.items()}
@@ -116,7 +133,11 @@ class PrivacyScanner:
         # Build anonymised text (process in reverse order to keep positions valid)
         anonymised = text
         for finding in sorted(final_findings, key=lambda f: f.start, reverse=True):
-            anonymised = anonymised[: finding.start] + finding.placeholder + anonymised[finding.end :]
+            anonymised = (
+                anonymised[: finding.start]
+                + finding.placeholder
+                + anonymised[finding.end :]
+            )
 
         return ScanResult(
             original_text=text,

@@ -12,6 +12,7 @@ def detector() -> SecretDetector:
 
 # ── Rule loading ───────────────────────────────────────────────────────────────
 
+
 def test_rules_loaded() -> None:
     assert len(_RULES) > 100, "Expected 100+ rules"
 
@@ -28,6 +29,7 @@ def test_all_patterns_compile() -> None:
 
 
 # ── Cloud / VCS ────────────────────────────────────────────────────────────────
+
 
 def test_aws_access_key(detector: SecretDetector) -> None:
     findings = detector.detect("key=AKIA" + "I0SFODNN7EXAMPLE" + "12345")
@@ -49,14 +51,19 @@ def test_gitlab_pat(detector: SecretDetector) -> None:
 
 # ── LLM / AI ──────────────────────────────────────────────────────────────────
 
+
 def test_anthropic_key(detector: SecretDetector) -> None:
     findings = detector.detect("ANTHROPIC_API_KEY=sk-ant-api03-" + "A" * 32)
-    assert any(f.rule_id in ("anthropic-api-key", "anthropic-api-key-env") for f in findings)
+    assert any(
+        f.rule_id in ("anthropic-api-key", "anthropic-api-key-env") for f in findings
+    )
 
 
 def test_openai_key_env(detector: SecretDetector) -> None:
     findings = detector.detect("OPENAI_API_KEY=sk-proj-" + "B" * 50)
-    assert any(f.rule_id in ("openai-api-key-new", "openai-api-key-env") for f in findings)
+    assert any(
+        f.rule_id in ("openai-api-key-new", "openai-api-key-env") for f in findings
+    )
 
 
 def test_huggingface_token(detector: SecretDetector) -> None:
@@ -71,6 +78,7 @@ def test_groq_key(detector: SecretDetector) -> None:
 
 # ── Database ───────────────────────────────────────────────────────────────────
 
+
 def test_postgres_url(detector: SecretDetector) -> None:
     findings = detector.detect("postgresql://user:s3cr3t@db.example.com/mydb")
     assert any(f.rule_id == "db-postgres-url" for f in findings)
@@ -83,6 +91,7 @@ def test_mongodb_url(detector: SecretDetector) -> None:
 
 # ── Private Key ────────────────────────────────────────────────────────────────
 
+
 def test_private_key_pem(detector: SecretDetector) -> None:
     pem = "-----BEGIN RSA " + "PRIVATE KEY-----\nMIIEow..."
     findings = detector.detect(pem)
@@ -91,6 +100,7 @@ def test_private_key_pem(detector: SecretDetector) -> None:
 
 # ── Python patterns ────────────────────────────────────────────────────────────
 
+
 def test_python_inline_openai_key(detector: SecretDetector) -> None:
     findings = detector.detect('client = OpenAI(api_key="sk-proj-' + "Z" * 50 + '")')
     assert any(f.rule_id == "python-openai-client-inline-key" for f in findings)
@@ -98,16 +108,23 @@ def test_python_inline_openai_key(detector: SecretDetector) -> None:
 
 def test_python_dotenv_line(detector: SecretDetector) -> None:
     findings = detector.detect("OPENAI_API_KEY=sk-proj-" + "C" * 50 + "\n")
-    assert any(f.rule_id in ("python-dotenv-llm-key", "openai-api-key-new", "openai-api-key-env") for f in findings)
+    assert any(
+        f.rule_id
+        in ("python-dotenv-llm-key", "openai-api-key-new", "openai-api-key-env")
+        for f in findings
+    )
 
 
 # ── Redaction correctness ──────────────────────────────────────────────────────
+
 
 def test_secret_group_redacts_only_value(detector: SecretDetector) -> None:
     """For rules with secret_group > 0, only the value — not the key name — is redacted."""
     text = "ANTHROPIC_API_KEY=sk-ant-" + "X" * 36
     findings = detector.detect(text)
-    env_finding = next((f for f in findings if f.rule_id == "anthropic-api-key-env"), None)
+    env_finding = next(
+        (f for f in findings if f.rule_id == "anthropic-api-key-env"), None
+    )
     if env_finding:
         # Should NOT include "ANTHROPIC_API_KEY=" in the redacted span
         assert "ANTHROPIC_API_KEY" not in env_finding.text
@@ -127,8 +144,10 @@ def test_no_findings_on_clean_text(detector: SecretDetector) -> None:
 
 # ── Scanner integration ────────────────────────────────────────────────────────
 
+
 def test_secret_in_scanner() -> None:
     from privacy_guard import PrivacyScanner
+
     scanner = PrivacyScanner()
     result = scanner.scan("API_KEY=ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
     assert "[SECRET_1]" in result.anonymised_text
@@ -138,7 +157,10 @@ def test_secret_in_scanner() -> None:
 def test_secret_wins_over_email() -> None:
     """A Bearer token that looks like an email context should be SECRET not EMAIL."""
     from privacy_guard import PrivacyScanner
+
     scanner = PrivacyScanner()
-    result = scanner.scan("Authorization: Bearer ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
+    result = scanner.scan(
+        "Authorization: Bearer ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+    )
     types = {f.pii_type for f in result.findings}
     assert PiiType.SECRET in types

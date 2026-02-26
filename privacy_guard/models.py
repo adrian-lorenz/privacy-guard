@@ -6,10 +6,15 @@ from enum import Enum
 class PiiType(str, Enum):
     NAME = "NAME"
     IBAN = "IBAN"
+    CREDIT_CARD = "CREDIT_CARD"
+    PERSONAL_ID = "PERSONAL_ID"
+    SOCIAL_SECURITY = "SOCIAL_SECURITY"
+    TAX_ID = "TAX_ID"
     PHONE = "PHONE"
     EMAIL = "EMAIL"
     ADDRESS = "ADDRESS"
     SECRET = "SECRET"
+    URL_SECRET = "URL_SECRET"
 
 
 @dataclass(frozen=True)

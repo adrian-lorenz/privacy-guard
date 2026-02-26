@@ -53,6 +53,8 @@ def test_no_false_positive(detector):
 
 
 def test_multiple_addresses(detector):
-    text = "Absender: Hauptstraße 1, 10115 Berlin. Empfänger: Gartenweg 5, 80333 München."
+    text = (
+        "Absender: Hauptstraße 1, 10115 Berlin. Empfänger: Gartenweg 5, 80333 München."
+    )
     findings = detector.detect(text)
     assert len(findings) == 2
