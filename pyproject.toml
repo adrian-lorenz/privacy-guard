@@ -1,6 +1,6 @@
 [project]
 name = "privacy-guard-scanner"
-version = "1.0.1"
+version = "1.0.2"
 description = "DSGVO-konformes Erkennen und Ersetzen von PII in LLM-Prompts"
 license = "MIT"
 readme = "README.md"
