@@ -9,11 +9,11 @@ def detector():
 
 
 def test_basic_name(detector):
-    text = "Hallo, ich bin Mia Klaiber."
+    text = "Hallo, ich bin Mia Müller."
     findings = detector.detect(text)
     assert len(findings) == 1
     f = findings[0]
-    assert f.text == "Mia Klaiber"
+    assert f.text == "Mia Müller"
     assert f.confidence == 0.85
 
 
@@ -78,9 +78,9 @@ def test_multiple_names(detector):
 
 
 def test_custom_whitelist():
-    wl = WhitelistManager(extra_names=["Mia Klaiber"])
+    wl = WhitelistManager(extra_names=["Mia Braun"])
     det = NameDetector(whitelist=wl)
-    text = "Mia Klaiber ist whitelisted."
+    text = "Mia Braun ist whitelisted."
     findings = det.detect(text)
     assert len(findings) == 0
 

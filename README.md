@@ -1,37 +1,57 @@
 # privacy-guard
 
-DSGVO/GDPR-konformes Erkennen und Ersetzen von personenbezogenen Daten (PII) in Text —
-regel- und musterbasiert, kein ML-Inference zur Laufzeit.
+[![PyPI](https://img.shields.io/pypi/v/privacy-guard-scanner)](https://pypi.org/project/privacy-guard-scanner/)
+[![Python](https://img.shields.io/pypi/pyversions/privacy-guard-scanner)](https://pypi.org/project/privacy-guard-scanner/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/adrian-lorenz/privacy-guard/blob/main/LICENSE)
+[![Tests](https://img.shields.io/github/actions/workflow/status/adrian-lorenz/privacy-guard/release.yml?branch=main&label=tests)](https://github.com/adrian-lorenz/privacy-guard/actions/workflows/release.yml)
+[![PyPI Publish](https://img.shields.io/github/actions/workflow/status/adrian-lorenz/privacy-guard/release.yml?branch=main&label=pypi%20publish)](https://github.com/adrian-lorenz/privacy-guard/actions/workflows/release.yml)
+[![Docker Publish](https://img.shields.io/github/actions/workflow/status/adrian-lorenz/privacy-guard/docker.yml?branch=main&label=docker%20publish)](https://github.com/adrian-lorenz/privacy-guard/actions/workflows/docker.yml)
+[![Docker Hub](https://img.shields.io/docker/v/noxway/privacy-guard?label=Docker%20Hub&logo=docker)](https://hub.docker.com/r/noxway/privacy-guard)
 
-Designed für den Einsatz vor LLM-Prompts: sensitive Daten werden durch stabile,
-umkehrbare Platzhalter ersetzt und können nach der LLM-Antwort wiederhergestellt werden.
+**DSGVO/GDPR-konforme PII-Anonymisierung für LLM-Workflows**.
 
-## Features
+`privacy-guard` erkennt personenbezogene Daten zuverlässig in deutschem Text,
+ersetzt sie durch stabile Platzhalter und ermöglicht eine saubere Rückführung nach der Verarbeitung.
+Kein ML-Inference-Overhead zur Laufzeit für die meisten Detektoren, klare Ergebnisse, API-ready.
 
-| Typ | Beispiele |
-|---|---|
-| **Namen** | „Hans Müller", „Dr. Anna Schmidt" (via spaCy NER) |
-| **IBAN** | DE89 3704 0044 0532 0130 00 (+ ISO 7064 Prüfsumme) |
-| **Telefon** | +49 89 12345678, 0800 123456 |
-| **E-Mail** | kontakt@example.de |
-| **Adresse** | Hauptstraße 12, 79100 Freiburg |
-| **Secrets** | API-Keys, Tokens, Passwörter (122 Muster) |
+![privacy-guard hero](assets/header.jpg)
 
-- Personen des öffentlichen Lebens (Politiker, CEOs, Prominente) werden **nicht** maskiert
-- Gleicher Originaltext → gleicher Platzhalter (Deduplication)
-- `ScanResult.restore()` ersetzt Platzhalter zurück in den LLM-Output
+**Highlights**
+- 🔒 Compliance-first: Schutz sensibler Daten vor externen LLMs
+- ⚡ Runtime-freundlich: Regex/Regel-Detektoren ohne schweren Inference-Stack
+- 🔁 Deterministisch: stabile Platzhalter plus verlustfreie Rückführung
+- 🐳 Deploy-ready: Python Package und FastAPI/Docker sofort nutzbar
 
----
+## Warum privacy-guard?
 
-## Python-Package
+- Schützt sensible Daten **vor** dem Versand an externe Modelle
+- Ersetzt PII durch deterministische Platzhalter wie `[NAME_1]`, `[IBAN_1]`
+- Stellt Originalwerte mit `ScanResult.restore()` wieder her
+- Löst überlappende Treffer mit Prioritätslogik (z. B. `SECRET > IBAN > EMAIL > ...`)
+- Unterstützt Python-Package und FastAPI/Docker-Betrieb
 
-### Installation
+## Erfasste PII-Typen
+
+| Typ | Beispiel | Hinweis |
+|---|---|---|
+| `NAME` | `Dr. Anna Schmidt` | via spaCy NER (`de_core_news_sm`) |
+| `IBAN` | `DE89 3704 0044 0532 0130 00` | inkl. ISO-7064-Prüfung |
+| `PHONE` | `+49 89 12345678` | deutschsprachige Formate |
+| `EMAIL` | `kontakt@example.de` | RFC-nahe Muster |
+| `ADDRESS` | `Hauptstraße 12, 79100 Freiburg` | regelbasiert |
+| `SECRET` | API-Keys, Tokens, Passwörter | 100+ Musterregeln |
+
+Zusätzlich: Personen des öffentlichen Lebens werden per interner Liste standardmäßig nicht maskiert.
+
+## Installation
+
+### Python Package
 
 ```bash
 pip install privacy-guard-scanner
 ```
 
-Der **Namens-Detektor** benötigt zusätzlich ein spaCy-Modell:
+Für den Namensdetektor wird ein spaCy-Modell benötigt:
 
 ```bash
 pip install "de_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/de_core_news_sm-3.8.0/de_core_news_sm-3.8.0-py3-none-any.whl"
@@ -39,9 +59,14 @@ pip install "de_core_news_sm @ https://github.com/explosion/spacy-models/release
 python -m spacy download de_core_news_sm
 ```
 
-Alle anderen Detektoren (IBAN, Telefon, E-Mail, Adresse, Secrets) funktionieren ohne das Modell.
+### API-Stack lokal
 
-### Schnellstart
+```bash
+pip install -e ".[api]"
+uvicorn api.main:app --reload --port 8000
+```
+
+## Quickstart (Python)
 
 ```python
 from privacy_guard import PrivacyScanner
@@ -49,77 +74,65 @@ from privacy_guard import PrivacyScanner
 scanner = PrivacyScanner()
 
 result = scanner.scan(
-    "Bitte überweise 500 € an Hans Müller, IBAN DE89 3704 0044 0532 0130 00. "
+    "Bitte überweise 500 EUR an Hans Müller, "
+    "IBAN DE89 3704 0044 0532 0130 00. "
     "Rückfragen an h.mueller@example.de oder +49 89 123456."
 )
 
 print(result.anonymised_text)
-# → "Bitte überweise 500 € an [NAME_1], IBAN [IBAN_1]. Rückfragen an [EMAIL_1] oder [PHONE_1]."
+# Bitte überweise 500 EUR an [NAME_1], IBAN [IBAN_1]. Rückfragen an [EMAIL_1] oder [PHONE_1].
 
 print(result.mapping)
-# → {"[NAME_1]": "Hans Müller", "[IBAN_1]": "DE89 3704 0044 0532 0130 00", ...}
+# {'[NAME_1]': 'Hans Müller', '[IBAN_1]': 'DE89 3704 0044 0532 0130 00', ...}
 
-# LLM-Antwort wiederherstellen
-llm_response = "Vielen Dank, [NAME_1]! Ihre Überweisung von [IBAN_1] wurde verarbeitet."
-print(result.restore(llm_response))
-# → "Vielen Dank, Hans Müller! Ihre Überweisung von DE89 3704 0044 0532 0130 00 wurde verarbeitet."
+llm_answer = "Vielen Dank, [NAME_1]. Die Daten zu [IBAN_1] sind verarbeitet."
+print(result.restore(llm_answer))
+# Vielen Dank, Hans Müller. Die Daten zu DE89 3704 0044 0532 0130 00 sind verarbeitet.
 ```
 
-### Detektoren einzeln steuern
+## Scanner konfigurieren
 
 ```python
-from privacy_guard import PrivacyScanner, PiiType
+from privacy_guard import PiiType, PrivacyScanner
 
-scanner = PrivacyScanner()
-scanner.disable_detector(PiiType.NAME)   # Namens-Detektor deaktivieren
-scanner.enable_detector(PiiType.NAME)    # wieder aktivieren
-
-# Eigene Whitelist-Einträge (werden nicht maskiert)
 scanner = PrivacyScanner(extra_whitelist_names=["Erika Musterfrau"])
+scanner.disable_detector(PiiType.NAME)
+scanner.enable_detector(PiiType.NAME)
+
+result = scanner.scan("Kontakt: erika@example.de")
 ```
 
-### Nur bestimmte Findings auswerten
+Nur bestimmte Findings auswerten:
 
 ```python
+from privacy_guard import PiiType
+
 secrets = [f for f in result.findings if f.pii_type == PiiType.SECRET]
-for s in secrets:
-    print(f"  {s.rule_id}: {s.text!r}  (confidence={s.confidence})")
+for finding in secrets:
+    print(finding.rule_id, finding.text, finding.confidence)
 ```
 
----
-
-## REST-API (Docker)
-
-Das Repo enthält eine FastAPI-Oberfläche, die als Docker-Image auf Docker Hub bereitgestellt wird.
-
-[![Docker Hub](https://img.shields.io/docker/v/noxway/privacy-guard?label=Docker%20Hub&logo=docker)](https://hub.docker.com/r/noxway/privacy-guard)
-
-### Schnellstart
+## REST API (Docker)
 
 ```bash
-# Image direkt von Docker Hub ziehen und starten:
 docker run -p 8000:8000 noxway/privacy-guard:latest
 ```
 
-Oder mit `docker compose` (zieht das Image automatisch von Docker Hub):
+Alternativ via Compose:
 
 ```bash
 docker compose up
 ```
-
-Wer das Image lieber lokal bauen möchte, ersetzt in `docker-compose.yml` die Zeile `image:` durch `build: .`.
 
 ### Endpunkte
 
 | Methode | Pfad | Beschreibung |
 |---|---|---|
 | `GET` | `/health` | Liveness-Check |
-| `POST` | `/scan` | Text scannen, Findings + anonymisierten Text zurückgeben |
+| `POST` | `/scan` | Vollständiger Scan (Findings + Mapping + anonymisierter Text) |
 | `POST` | `/anonymize` | Nur anonymisierten Text zurückgeben |
 
-### Request-Schema
-
-Beide POST-Endpunkte akzeptieren dasselbe JSON-Schema:
+### Request-Body
 
 ```json
 {
@@ -129,13 +142,7 @@ Beide POST-Endpunkte akzeptieren dasselbe JSON-Schema:
 }
 ```
 
-| Feld | Typ | Default | Beschreibung |
-|---|---|---|---|
-| `text` | `string` | — | Zu scannender Text |
-| `detectors` | `string[]` | alle | Aktive Detektoren: `NAME`, `IBAN`, `PHONE`, `EMAIL`, `ADDRESS`, `SECRET` |
-| `whitelist` | `string[]` | `[]` | Namen, die der Namens-Detektor ignorieren soll |
-
-### Beispiel
+### Beispiel mit `curl`
 
 ```bash
 curl -X POST http://localhost:8000/scan \
@@ -143,43 +150,32 @@ curl -X POST http://localhost:8000/scan \
   -d '{"text": "Kontakt: hans@example.de, IBAN DE89370400440532013000", "detectors": ["EMAIL", "IBAN"]}'
 ```
 
-```json
-{
-  "anonymised_text": "Kontakt: [EMAIL_1], IBAN [IBAN_1]",
-  "findings": [
-    {"start": 9, "end": 25, "text": "hans@example.de", "pii_type": "EMAIL", "confidence": 1.0, "placeholder": "[EMAIL_1]"},
-    {"start": 32, "end": 54, "text": "DE89370400440532013000", "pii_type": "IBAN", "confidence": 1.0, "placeholder": "[IBAN_1]"}
-  ],
-  "mapping": {
-    "[EMAIL_1]": "hans@example.de",
-    "[IBAN_1]": "DE89370400440532013000"
-  }
-}
-```
+## API-Konfiguration
 
-### Konfiguration
-
-Die API wird über Umgebungsvariablen konfiguriert:
-
-| Variable | Default | Beschreibung |
+| Variable | Standard | Bedeutung |
 |---|---|---|
-| `API_KEY` | — | Wenn gesetzt, muss jeder Request den Header `X-API-Key: <key>` mitschicken |
-| `CORS_ORIGINS` | `*` | Erlaubte Origins, kommagetrennt (z.B. `https://myapp.example.com`) |
+| `API_KEY` | leer | Wenn gesetzt, muss `X-API-Key` mitgesendet werden |
+| `CORS_ORIGINS` | `*` | Kommagetrennte Origins, z. B. `https://app.example.com` |
+
+Beispiel:
 
 ```yaml
-# docker-compose.yml
 services:
   api:
-    build: .
+    image: noxway/privacy-guard:latest
     ports:
       - "8000:8000"
     environment:
-      API_KEY: mein-geheimer-key
-      CORS_ORIGINS: https://myapp.example.com
+      API_KEY: my-secret-key
+      CORS_ORIGINS: https://app.example.com
 ```
 
----
+## Roadmap-Ideen
+
+- Verbesserte Entitäten-Erkennung für Adressen in DACH-Varianten
+- Optionales Audit-Logging für Compliance-Reports
+- Erweiterte Mehrsprachigkeit über Deutsch hinaus
 
 ## Lizenz
 
-MIT — siehe [LICENSE](LICENSE).
+MIT. Details in [LICENSE](LICENSE).
