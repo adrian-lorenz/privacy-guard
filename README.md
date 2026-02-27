@@ -122,7 +122,7 @@ for finding in secrets:
 ## Web-UI
 
 Der API-Server enthält eine integrierte HTMX-Oberfläche — kein separater Prozess, keine CDN-Abhängigkeiten.
-
+![img.png](img.png)
 ```bash
 uvicorn api.main:app --reload
 # → http://localhost:8000

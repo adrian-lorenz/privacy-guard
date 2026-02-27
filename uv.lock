@@ -691,7 +691,7 @@ wheels = [
 
 [[package]]
 name = "privacy-guard-scanner"
-version = "1.0.5"
+version = "1.0.6"
 source = { editable = "." }
 dependencies = [
     { name = "spacy" },
@@ -710,11 +710,14 @@ api = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "bcrypt" },
     { name = "de-core-news-sm" },
     { name = "fastapi" },
     { name = "httpx" },
+    { name = "jinja2" },
     { name = "pyright" },
     { name = "pytest" },
+    { name = "python-multipart" },
     { name = "ruff" },
 ]
 
@@ -733,11 +736,14 @@ provides-extras = ["api"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "bcrypt", specifier = ">=4.0" },
     { name = "de-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/de_core_news_sm-3.8.0/de_core_news_sm-3.8.0-py3-none-any.whl" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.27" },
+    { name = "jinja2", specifier = ">=3.1" },
     { name = "pyright", specifier = "==1.1.408" },
     { name = "pytest", specifier = ">=9.0.2" },
+    { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "ruff", specifier = "==0.15.4" },
 ]
 
