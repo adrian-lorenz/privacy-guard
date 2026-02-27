@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import secrets
 import sqlite3
 from contextlib import contextmanager
 from typing import Generator
@@ -44,6 +46,17 @@ def init_db() -> None:
                 duration_ms     REAL,
                 created_at      TEXT DEFAULT (datetime('now'))
             );
+
+            CREATE TABLE IF NOT EXISTS api_keys (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                name         TEXT NOT NULL,
+                key_hash     TEXT UNIQUE NOT NULL,
+                key_prefix   TEXT NOT NULL,
+                created_by   INTEGER REFERENCES users(id),
+                created_at   TEXT DEFAULT (datetime('now')),
+                last_used_at TEXT,
+                is_active    INTEGER NOT NULL DEFAULT 1
+            );
         """)
         if con.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
             pw = bcrypt.hashpw(_DEFAULT_ADMIN_PWD.encode(), bcrypt.gensalt()).decode()
@@ -79,7 +92,14 @@ def save_scan(
             """INSERT INTO scans
                (user_id, input_text, anonymised_text, findings_json, pii_count, duration_ms)
                VALUES (?, ?, ?, ?, ?, ?)""",
-            (user_id, input_text, anonymised_text, findings_json, pii_count, duration_ms),
+            (
+                user_id,
+                input_text,
+                anonymised_text,
+                findings_json,
+                pii_count,
+                duration_ms,
+            ),
         )
 
 
@@ -142,6 +162,53 @@ def get_daily_counts(days: int = 30, user_id: int | None = None) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def create_api_key(name: str, created_by: int) -> str:
+    """Generate a new API key, persist its SHA-256 hash, return the full key (shown once)."""
+    raw = "pg_" + secrets.token_urlsafe(32)
+    key_hash = hashlib.sha256(raw.encode()).hexdigest()
+    key_prefix = raw[:12]  # "pg_" + 9 chars
+    with _conn() as con:
+        con.execute(
+            "INSERT INTO api_keys (name, key_hash, key_prefix, created_by) VALUES (?, ?, ?, ?)",
+            (name, key_hash, key_prefix, created_by),
+        )
+    return raw
+
+
+def list_api_keys() -> list[dict]:
+    with _conn() as con:
+        rows = con.execute(
+            """SELECT k.id, k.name, k.key_prefix, k.created_at, k.last_used_at,
+                      k.is_active, u.username AS created_by
+               FROM api_keys k
+               LEFT JOIN users u ON k.created_by = u.id
+               ORDER BY k.created_at DESC"""
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def revoke_api_key(key_id: int) -> None:
+    with _conn() as con:
+        con.execute("UPDATE api_keys SET is_active = 0 WHERE id = ?", (key_id,))
+
+
+def check_api_key(raw_key: str) -> bool:
+    """Return True if the key is active; also updates last_used_at."""
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    with _conn() as con:
+        row = con.execute(
+            "SELECT id FROM api_keys WHERE key_hash = ? AND is_active = 1",
+            (key_hash,),
+        ).fetchone()
+        if row is None:
+            return False
+        con.execute(
+            "UPDATE api_keys SET last_used_at = datetime('now') WHERE id = ?",
+            (row["id"],),
+        )
+    return True
+
+
 def get_totals(user_id: int | None = None) -> dict[str, int]:
     with _conn() as con:
         if user_id is not None:
@@ -149,7 +216,8 @@ def get_totals(user_id: int | None = None) -> dict[str, int]:
                 "SELECT COUNT(*) FROM scans WHERE user_id = ?", (user_id,)
             ).fetchone()[0]
             total_pii = con.execute(
-                "SELECT COALESCE(SUM(pii_count), 0) FROM scans WHERE user_id = ?", (user_id,)
+                "SELECT COALESCE(SUM(pii_count), 0) FROM scans WHERE user_id = ?",
+                (user_id,),
             ).fetchone()[0]
         else:
             total_scans = con.execute("SELECT COUNT(*) FROM scans").fetchone()[0]

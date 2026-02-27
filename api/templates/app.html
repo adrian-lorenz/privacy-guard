@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>privacy-guard</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/htmx.min.js"></script>
+  <script src="/static/chart.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>&#x1F512; privacy-guard</h1>
+    <div class="user-info">
+      <span>&#x1F464; <strong>{{ user.username }}</strong> ({{ user.role }})</span>
+      <form method="post" action="/logout" style="display:inline">
+        <button type="submit" class="btn btn-sm">Logout</button>
+      </form>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active"
+            hx-get="/ui/scan"
+            hx-target="#content"
+            hx-swap="innerHTML"
+            onclick="setActive(this)">&#x1F50D; Live Test</button>
+    <button class="tab-btn"
+            hx-get="/ui/history"
+            hx-target="#content"
+            hx-swap="innerHTML"
+            onclick="setActive(this)">&#x1F4CB; History</button>
+    <button class="tab-btn"
+            hx-get="/ui/stats"
+            hx-target="#content"
+            hx-swap="innerHTML"
+            onclick="setActive(this)">&#x1F4CA; Dashboard</button>
+    {% if user.role == 'admin' %}
+    <button class="tab-btn"
+            hx-get="/ui/apikeys"
+            hx-target="#content"
+            hx-swap="innerHTML"
+            onclick="setActive(this)">&#x1F511; API Keys</button>
+    {% endif %}
+  </nav>
+
+  <main>
+    <div id="content" hx-get="/ui/scan" hx-trigger="load" hx-swap="innerHTML">
+      <p class="info">Lade&hellip;</p>
+    </div>
+  </main>
+
+  <script>
+    function setActive(btn) {
+      document.querySelectorAll('.tab-btn').forEach(function(b) {
+        b.classList.remove('active');
+      });
+      btn.classList.add('active');
+    }
+  </script>
+</body>
+</html>
