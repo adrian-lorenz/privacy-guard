@@ -8,47 +8,45 @@
 [![Docker Publish](https://img.shields.io/github/actions/workflow/status/adrian-lorenz/privacy-guard/docker.yml?branch=main&label=docker%20publish)](https://github.com/adrian-lorenz/privacy-guard/actions/workflows/docker.yml)
 [![Docker Hub](https://img.shields.io/docker/v/noxway/privacy-guard?label=Docker%20Hub&logo=docker)](https://hub.docker.com/r/noxway/privacy-guard)
 
-**DSGVO/GDPR-konforme PII-Anonymisierung für LLM-Workflows**.
+**GDPR/DSGVO-compliant PII anonymisation for LLM workflows.**
 
-`privacy-guard` erkennt personenbezogene Daten zuverlässig in deutschem Text,
-ersetzt sie durch stabile Platzhalter und ermöglicht eine saubere Rückführung nach der Verarbeitung.
-Kein ML-Inference-Overhead zur Laufzeit für die meisten Detektoren, klare Ergebnisse, API-ready.
+`privacy-guard` reliably detects personal data in German-language text, replaces it with stable placeholders, and enables clean restoration after processing. No ML-inference overhead at runtime for most detectors — clear results, API-ready.
 
 ![privacy-guard hero](assets/header.jpg)
 
 **Highlights**
-- 🔒 Compliance-first: Schutz sensibler Daten vor externen LLMs
-- ⚡ Runtime-freundlich: Regex/Regel-Detektoren ohne schweren Inference-Stack
-- 🔁 Deterministisch: stabile Platzhalter plus verlustfreie Rückführung
-- 🐳 Deploy-ready: Python Package und FastAPI/Docker sofort nutzbar
+- 🔒 Compliance-first: protect sensitive data before it reaches external LLMs
+- ⚡ Runtime-friendly: regex/rule-based detectors without a heavy inference stack
+- 🔁 Deterministic: stable placeholders plus lossless restoration
+- 🐳 Deploy-ready: Python package and FastAPI/Docker available out of the box
 
-## Warum privacy-guard?
+## Why privacy-guard?
 
-- Schützt sensible Daten **vor** dem Versand an externe Modelle
-- Ersetzt PII durch deterministische Platzhalter wie `[NAME_1]`, `[IBAN_1]`
-- Stellt Originalwerte mit `ScanResult.restore()` wieder her
-- Löst überlappende Treffer mit Prioritätslogik (z. B. `SECRET > IBAN > SOCIAL_SECURITY > EMAIL > ...`)
-- Unterstützt Python-Package und FastAPI/Docker-Betrieb
+- Protects sensitive data **before** sending it to external models
+- Replaces PII with deterministic placeholders such as `[NAME_1]`, `[IBAN_1]`
+- Restores original values via `ScanResult.restore()`
+- Resolves overlapping matches with priority logic (e.g. `SECRET > IBAN > SOCIAL_SECURITY > EMAIL > …`)
+- Supports Python-package and FastAPI/Docker operation
 
-## Erfasste PII-Typen
+## Detected PII Types
 
-| Typ | Beispiel | Methode |
+| Type | Example | Method |
 |---|---|---|
 | `NAME` | `Dr. Anna Schmidt` | spaCy NER (`de_core_news_sm`) |
-| `IBAN` | `DE89 3704 0044 0532 0130 00` | Regex + ISO-7064-Prüfziffer |
-| `CREDIT_CARD` | `4111 1111 1111 1111` | Regex + Luhn-Algorithmus |
-| `PERSONAL_ID` | `C22990047` | Regex — Personalausweis & Reisepass (gleiches Format) |
+| `IBAN` | `DE89 3704 0044 0532 0130 00` | Regex + ISO 7064 check digit |
+| `CREDIT_CARD` | `4111 1111 1111 1111` | Regex + Luhn algorithm |
+| `PERSONAL_ID` | `C22990047` | Regex — Personalausweis & Reisepass (same format) |
 | `SOCIAL_SECURITY` | `12 345678 X 123` | Regex — Rentenversicherungsnummer |
-| `TAX_ID` | `12 345 678 903` | Regex + mod-11-Prüfziffer (§ 139b AO) |
-| `PHONE` | `+49 89 12345678` | Regex — DACH-Formate |
+| `TAX_ID` | `12 345 678 903` | Regex + mod-11 check digit (§ 139b AO) |
+| `PHONE` | `+49 89 12345678` | Regex — DACH formats |
 | `EMAIL` | `kontakt@example.de` | Regex |
-| `ADDRESS` | `Hauptstraße 12, 79100 Freiburg` | Regex aus Daten-Dateien |
-| `SECRET` | AWS-Key, GitHub-PAT, … | 100+ Musterregeln (TOML) |
-| `URL_SECRET` | `?token=abc123def456` | Regex — Query-Parameter-Werte |
+| `ADDRESS` | `Hauptstraße 12, 79100 Freiburg` | Regex built from data files |
+| `SECRET` | AWS key, GitHub PAT, … | 100+ pattern rules (TOML) |
+| `URL_SECRET` | `?token=abc123def456` | Regex — query parameter values |
 
-**Priorität bei überlappenden Treffern:** `SECRET = URL_SECRET > IBAN = CREDIT_CARD = SOCIAL_SECURITY > PERSONAL_ID = TAX_ID = EMAIL > PHONE > ADDRESS > NAME`
+**Overlap priority:** `SECRET = URL_SECRET > IBAN = CREDIT_CARD = SOCIAL_SECURITY > PERSONAL_ID = TAX_ID = EMAIL > PHONE > ADDRESS > NAME`
 
-Personen des öffentlichen Lebens werden per interner Whitelist (~1 000 Einträge) standardmäßig nicht maskiert.
+Public figures are excluded from masking by default via an internal whitelist (~1,000 entries).
 
 ## Installation
 
@@ -58,15 +56,15 @@ Personen des öffentlichen Lebens werden per interner Whitelist (~1 000 Einträg
 pip install privacy-guard-scanner
 ```
 
-Für den Namensdetektor wird ein spaCy-Modell benötigt:
+The name detector requires a spaCy model:
 
 ```bash
 pip install "de_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/de_core_news_sm-3.8.0/de_core_news_sm-3.8.0-py3-none-any.whl"
-# oder:
+# or:
 python -m spacy download de_core_news_sm
 ```
 
-### API-Stack lokal
+### API Stack (local)
 
 ```bash
 pip install -e ".[api]"
@@ -97,7 +95,7 @@ print(result.restore(llm_answer))
 # Vielen Dank, Hans Müller. Die Daten zu DE89 3704 0044 0532 0130 00 sind verarbeitet.
 ```
 
-## Scanner konfigurieren
+## Configuring the Scanner
 
 ```python
 from privacy_guard import PiiType, PrivacyScanner
@@ -106,10 +104,10 @@ scanner = PrivacyScanner(extra_whitelist_names=["Erika Musterfrau"])
 scanner.disable_detector(PiiType.NAME)
 scanner.enable_detector(PiiType.NAME)
 
-result = scanner.scan("Kontakt: erika@example.de")
+result = scanner.scan("Contact: erika@example.de")
 ```
 
-Nur bestimmte Findings auswerten:
+Filtering specific findings:
 
 ```python
 from privacy_guard import PiiType
@@ -119,10 +117,12 @@ for finding in secrets:
     print(finding.rule_id, finding.text, finding.confidence)
 ```
 
-## Web-UI
+## Web UI
 
-Der API-Server enthält eine integrierte HTMX-Oberfläche — kein separater Prozess, keine CDN-Abhängigkeiten.
+The API server includes a built-in HTMX interface — no separate process, no CDN dependencies.
+
 ![img.png](img.png)
+
 ```bash
 uvicorn api.main:app --reload
 # → http://localhost:8000
@@ -130,27 +130,27 @@ uvicorn api.main:app --reload
 
 ### Login
 
-Standardmäßig wird ein `admin`-Account mit Passwort `admin` angelegt (über `UI_ADMIN_PASSWORD` änderbar).
-Nach dem Login stehen drei Tabs zur Verfügung:
+An `admin` account with password `admin` is created by default (change via `UI_ADMIN_PASSWORD`).
+After login three tabs are available:
 
-| Tab | Beschreibung |
+| Tab | Description |
 |---|---|
-| **Live Test** | Text eingeben, Detektoren auswählen, Scan starten — Original und anonymisierten Text nebeneinander sehen |
-| **History** | Alle eigenen Scans (Admins sehen alle Nutzer); Klick auf eine Zeile zeigt Findings-Detail |
-| **Dashboard** | Gesamtstatistiken, PII-Typ-Balkendiagramm, Scans-pro-Tag-Liniendiagramm (Chart.js) |
+| **Live Test** | Enter text, select detectors, run a scan — view original and anonymised text side by side |
+| **History** | All your own scans (admins see all users); click a row to see finding details |
+| **Dashboard** | Overall statistics, PII-type bar chart, scans-per-day line chart (Chart.js) |
 
-Admins sehen zusätzlich den Tab **API Keys**.
+Admins additionally see the **API Keys** tab.
 
-### API-Key-Verwaltung (Admin)
+### API Key Management (Admin)
 
-Über den Tab **🔑 API Keys** können beliebig viele API-Keys angelegt und gesperrt werden:
+Use the **🔑 API Keys** tab to create and revoke any number of API keys:
 
-1. Name eingeben → **Key generieren**
-2. Den vollständigen Key (`pg_…`) kopieren — er wird nur einmal angezeigt
-3. Gespeichert wird ausschließlich der SHA-256-Hash; der Prefix (`pg_xxxxxxxxx…`) bleibt sichtbar
-4. Keys können jederzeit einzeln gesperrt werden
+1. Enter a name → **Generate key**
+2. Copy the full key (`pg_…`) — it is shown only once
+3. Only the SHA-256 hash is stored; the prefix (`pg_xxxxxxxxx…`) remains visible
+4. Keys can be revoked individually at any time
 
-Der über die Umgebungsvariable `API_KEY` gesetzte Key bleibt parallel gültig (Rückwärtskompatibilität).
+The key set via the `API_KEY` environment variable remains valid in parallel (backwards compatibility).
 
 ## REST API (Docker)
 
@@ -158,21 +158,21 @@ Der über die Umgebungsvariable `API_KEY` gesetzte Key bleibt parallel gültig (
 docker run -p 8000:8000 noxway/privacy-guard:latest
 ```
 
-Alternativ via Compose:
+Or via Compose:
 
 ```bash
 docker compose up
 ```
 
-### Endpunkte
+### Endpoints
 
-| Methode | Pfad | Beschreibung |
+| Method | Path | Description |
 |---|---|---|
-| `GET` | `/health` | Liveness-Check |
-| `POST` | `/scan` | Vollständiger Scan (Findings + Mapping + anonymisierter Text) |
-| `POST` | `/anonymize` | Nur anonymisierten Text zurückgeben |
+| `GET` | `/health` | Liveness check |
+| `POST` | `/scan` | Full scan (findings + mapping + anonymised text) |
+| `POST` | `/anonymize` | Return anonymised text only |
 
-### Request-Body
+### Request Body
 
 ```json
 {
@@ -182,15 +182,15 @@ docker compose up
 }
 ```
 
-### Beispiel mit `curl`
+### Example with `curl`
 
 ```bash
 curl -X POST http://localhost:8000/scan \
   -H "Content-Type: application/json" \
-  -d '{"text": "Kontakt: hans@example.de, IBAN DE89370400440532013000", "detectors": ["EMAIL", "IBAN"]}'
+  -d '{"text": "Contact: hans@example.de, IBAN DE89370400440532013000", "detectors": ["EMAIL", "IBAN"]}'
 ```
 
-Mit API-Key-Authentifizierung:
+With API key authentication:
 
 ```bash
 curl -X POST http://localhost:8000/scan \
@@ -199,16 +199,16 @@ curl -X POST http://localhost:8000/scan \
   -d '{"text": "hans@example.de"}'
 ```
 
-## Konfiguration
+## Configuration
 
-| Variable | Standard | Bedeutung |
+| Variable | Default | Description |
 |---|---|---|
-| `API_KEY` | leer | Wenn gesetzt, muss `X-API-Key` mitgesendet werden (Env-Var-Key oder DB-Key) |
-| `CORS_ORIGINS` | `*` | Kommagetrennte Origins, z. B. `https://app.example.com` |
-| `UI_DB_PATH` | `ui.db` | Pfad zur SQLite-Datenbank (Nutzer, Scans, API-Keys) |
-| `UI_ADMIN_PASSWORD` | `admin` | Passwort des automatisch angelegten Admin-Accounts |
+| `API_KEY` | empty | If set, `X-API-Key` must be sent with every request (env-var key or DB key) |
+| `CORS_ORIGINS` | `*` | Comma-separated origins, e.g. `https://app.example.com` |
+| `UI_DB_PATH` | `ui.db` | Path to the SQLite database (users, scans, API keys) |
+| `UI_ADMIN_PASSWORD` | `admin` | Password for the automatically created admin account |
 
-Beispiel:
+Example:
 
 ```yaml
 services:
@@ -220,7 +220,7 @@ services:
       API_KEY: my-secret-key
       CORS_ORIGINS: https://app.example.com
       UI_DB_PATH: /data/ui.db
-      UI_ADMIN_PASSWORD: sicher123
+      UI_ADMIN_PASSWORD: secure123
     volumes:
       - ui_data:/data
 
@@ -228,13 +228,13 @@ volumes:
   ui_data:
 ```
 
-## Roadmap-Ideen
+## Roadmap Ideas
 
-- Verbesserte Entitäten-Erkennung für Adressen in DACH-Varianten
-- Optionales Audit-Logging für Compliance-Reports
-- Erweiterte Mehrsprachigkeit über Deutsch hinaus
-- Prüfziffernvalidierung für Personalausweis/Reisepass
+- Improved entity recognition for DACH address variants
+- Optional audit logging for compliance reports
+- Extended multilingual support beyond German
+- Check-digit validation for Personalausweis/Reisepass
 
-## Lizenz
+## License
 
-MIT. Details in [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
