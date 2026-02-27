@@ -1,0 +1,86 @@
+<div id="stats-fragment">
+  <h2>Dashboard</h2>
+
+  <div class="metrics">
+    <div class="metric-card">
+      <div class="metric-value">{{ totals.total_scans }}</div>
+      <div class="metric-label">Gesamte Scans</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value">{{ totals.total_pii }}</div>
+      <div class="metric-label">Gefundene PII</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value">{{ most_common }}</div>
+      <div class="metric-label">H&#228;ufigster Typ</div>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>PII-Typen</h3>
+      {% if pii_data.labels %}
+      <canvas id="pii-chart"></canvas>
+      {% else %}
+      <p class="info">Noch keine Daten.</p>
+      {% endif %}
+    </div>
+    <div class="chart-card">
+      <h3>Scans pro Tag (30 Tage)</h3>
+      {% if daily_data.labels %}
+      <canvas id="daily-chart"></canvas>
+      {% else %}
+      <p class="info">Noch keine Daten.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      var piiData = {{ pii_data | tojson }};
+      var dailyData = {{ daily_data | tojson }};
+
+      if (piiData.labels && piiData.labels.length > 0) {
+        new Chart(document.getElementById('pii-chart'), {
+          type: 'bar',
+          data: {
+            labels: piiData.labels,
+            datasets: [{
+              label: 'Anzahl',
+              data: piiData.values,
+              backgroundColor: 'rgba(99, 102, 241, 0.6)',
+              borderColor: 'rgba(99, 102, 241, 1)',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+          }
+        });
+      }
+
+      if (dailyData.labels && dailyData.labels.length > 0) {
+        new Chart(document.getElementById('daily-chart'), {
+          type: 'line',
+          data: {
+            labels: dailyData.labels,
+            datasets: [{
+              label: 'Scans',
+              data: dailyData.values,
+              borderColor: 'rgba(99, 102, 241, 1)',
+              backgroundColor: 'rgba(99, 102, 241, 0.1)',
+              fill: true,
+              tension: 0.3
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+          }
+        });
+      }
+    })();
+  </script>
+</div>

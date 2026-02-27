@@ -1,0 +1,74 @@
+<div id="history-fragment">
+  <h2>Scan-History</h2>
+
+  {% if rows %}
+  <table>
+    <thead>
+      <tr>
+        <th>Zeitstempel</th>
+        {% if is_admin %}<th>Benutzer</th>{% endif %}
+        <th>PII-Treffer</th>
+        <th>Dauer (ms)</th>
+        <th>Eingabe (Vorschau)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr class="clickable" onclick="showDetail({{ loop.index0 }})">
+        <td>{{ row.created_at }}</td>
+        {% if is_admin %}<td>{{ row.username }}</td>{% endif %}
+        <td>{{ row.pii_count }}</td>
+        <td>{% if row.duration_ms %}{{ "%.0f" | format(row.duration_ms) }}{% else %}&mdash;{% endif %}</td>
+        <td>{{ row.input_text[:70] }}{% if row.input_text | length > 70 %}&hellip;{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div id="detail-panel" class="detail-panel" style="display:none"></div>
+
+  <script>
+    (function() {
+      var rows = {{ rows_json | safe }};
+
+      window.showDetail = function(idx) {
+        var row = rows[idx];
+        var findings = [];
+        try { findings = JSON.parse(row.findings_json || '[]'); } catch(e) {}
+
+        var findingsHtml;
+        if (findings.length > 0) {
+          var trs = findings.map(function(f) {
+            return '<tr><td>' + escHtml(f.pii_type) + '</td><td>' +
+                   escHtml(f.text) + '</td><td>' +
+                   Math.round(f.confidence * 100) + '%</td></tr>';
+          }).join('');
+          findingsHtml = '<table><thead><tr><th>Typ</th><th>Text</th><th>Konfidenz</th></tr></thead>' +
+                         '<tbody>' + trs + '</tbody></table>';
+        } else {
+          findingsHtml = '<p class="info">Keine PII gefunden.</p>';
+        }
+
+        document.getElementById('detail-panel').innerHTML =
+          '<h3>Scan-Detail</h3>' +
+          '<div class="two-col">' +
+            '<div><h4>Anonymisierter Text</h4>' +
+              '<pre class="text-box">' + escHtml(row.anonymised_text) + '</pre></div>' +
+            '<div><h4>Findings</h4>' + findingsHtml + '</div>' +
+          '</div>';
+        document.getElementById('detail-panel').style.display = 'block';
+      };
+
+      function escHtml(s) {
+        return String(s)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+    })();
+  </script>
+  {% else %}
+  <p class="info">Noch keine Scans gespeichert.</p>
+  {% endif %}
+</div>

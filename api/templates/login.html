@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>privacy-guard – Login</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="login-page">
+  <div class="login-box">
+    <h1>&#x1F512; privacy-guard</h1>
+    <p class="subtitle">PII-Anonymisierungs-Dashboard</p>
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+    <form method="post" action="/login">
+      <label>
+        Benutzername
+        <input type="text" name="username" required autofocus autocomplete="username">
+      </label>
+      <label>
+        Passwort
+        <input type="password" name="password" required autocomplete="current-password">
+      </label>
+      <button type="submit" class="btn btn-primary" style="width:100%">Anmelden</button>
+    </form>
+  </div>
+</body>
+</html>

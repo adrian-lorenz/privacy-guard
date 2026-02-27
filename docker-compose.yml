@@ -6,6 +6,14 @@ services:
     ports:
       - "8000:8000"
     restart: unless-stopped
+    environment:
+      UI_DB_PATH: /data/ui.db
+      UI_ADMIN_PASSWORD: admin        # change on first deploy
+    volumes:
+      - ui_data:/data
     # Optional environment variables:
     #   API_KEY: changeme                                              (enables X-API-Key auth)
     #   CORS_ORIGINS: https://myapp.example.com,https://other.example.com
+
+volumes:
+  ui_data:

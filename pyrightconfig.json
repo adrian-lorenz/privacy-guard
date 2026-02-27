@@ -1,0 +1,4 @@
+{
+  "include": ["privacy_guard", "api", "tests"],
+  "exclude": ["ui", "scripts"]
+}

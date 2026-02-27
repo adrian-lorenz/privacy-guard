@@ -1,0 +1,92 @@
+<div id="apikeys-fragment">
+  <h2>&#x1F511; API Keys</h2>
+
+  {% if new_key %}
+  <div class="alert alert-new-key">
+    <strong>Key erstellt &#x2014; jetzt kopieren, er wird nur einmal angezeigt!</strong>
+    <div class="key-display">
+      <code id="new-key-value">{{ new_key }}</code>
+      <button class="btn btn-copy" onclick="copyKey()">Kopieren</button>
+    </div>
+  </div>
+  <script>
+    function copyKey() {
+      navigator.clipboard.writeText(document.getElementById('new-key-value').textContent);
+      var btn = document.querySelector('.btn-copy');
+      btn.textContent = 'Kopiert!';
+      setTimeout(function() { btn.textContent = 'Kopieren'; }, 2000);
+    }
+  </script>
+  {% endif %}
+
+  <div class="two-col-narrow">
+    <div>
+      <h3>Neuen Key anlegen</h3>
+      <form hx-post="/ui/apikeys"
+            hx-target="#apikeys-fragment"
+            hx-swap="outerHTML">
+        <label>
+          Name / Beschreibung
+          <input type="text" name="name" required placeholder="z.B. Produktions-Server" autofocus>
+        </label>
+        <button type="submit" class="btn btn-primary">Key generieren</button>
+      </form>
+    </div>
+  </div>
+
+  <h3 style="margin-top:1.5rem">Vorhandene Keys</h3>
+  {% if keys %}
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Prefix</th>
+        <th>Erstellt von</th>
+        <th>Erstellt am</th>
+        <th>Zuletzt verwendet</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for k in keys %}
+      <tr>
+        <td>{{ k.name }}</td>
+        <td><code>{{ k.key_prefix }}&hellip;</code></td>
+        <td>{{ k.created_by or '&mdash;' }}</td>
+        <td>{{ k.created_at }}</td>
+        <td>{{ k.last_used_at or '&mdash;' }}</td>
+        <td>
+          {% if k.is_active %}
+          <span class="badge badge-active">Aktiv</span>
+          {% else %}
+          <span class="badge badge-revoked">Gesperrt</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if k.is_active %}
+          <button class="btn btn-danger btn-sm"
+                  hx-post="/ui/apikeys/{{ k.id }}/revoke"
+                  hx-target="#apikeys-fragment"
+                  hx-swap="outerHTML"
+                  hx-confirm="Key '{{ k.name }}' wirklich sperren?">
+            Sperren
+          </button>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="info">Noch keine API Keys angelegt.</p>
+  {% endif %}
+
+  <p class="info" style="margin-top:1rem">
+    Keys werden als SHA-256-Hash gespeichert. Der vollst&auml;ndige Key wird nur einmal angezeigt.
+    Prefix-Format: <code>pg_&hellip;</code>
+    {% if env_key_set %}
+    &mdash; Der Env-Var-Key (<code>API_KEY</code>) ist zus&auml;tzlich aktiv.
+    {% endif %}
+  </p>
+</div>

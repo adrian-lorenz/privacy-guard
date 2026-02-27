@@ -119,6 +119,39 @@ for finding in secrets:
     print(finding.rule_id, finding.text, finding.confidence)
 ```
 
+## Web-UI
+
+Der API-Server enthält eine integrierte HTMX-Oberfläche — kein separater Prozess, keine CDN-Abhängigkeiten.
+
+```bash
+uvicorn api.main:app --reload
+# → http://localhost:8000
+```
+
+### Login
+
+Standardmäßig wird ein `admin`-Account mit Passwort `admin` angelegt (über `UI_ADMIN_PASSWORD` änderbar).
+Nach dem Login stehen drei Tabs zur Verfügung:
+
+| Tab | Beschreibung |
+|---|---|
+| **Live Test** | Text eingeben, Detektoren auswählen, Scan starten — Original und anonymisierten Text nebeneinander sehen |
+| **History** | Alle eigenen Scans (Admins sehen alle Nutzer); Klick auf eine Zeile zeigt Findings-Detail |
+| **Dashboard** | Gesamtstatistiken, PII-Typ-Balkendiagramm, Scans-pro-Tag-Liniendiagramm (Chart.js) |
+
+Admins sehen zusätzlich den Tab **API Keys**.
+
+### API-Key-Verwaltung (Admin)
+
+Über den Tab **🔑 API Keys** können beliebig viele API-Keys angelegt und gesperrt werden:
+
+1. Name eingeben → **Key generieren**
+2. Den vollständigen Key (`pg_…`) kopieren — er wird nur einmal angezeigt
+3. Gespeichert wird ausschließlich der SHA-256-Hash; der Prefix (`pg_xxxxxxxxx…`) bleibt sichtbar
+4. Keys können jederzeit einzeln gesperrt werden
+
+Der über die Umgebungsvariable `API_KEY` gesetzte Key bleibt parallel gültig (Rückwärtskompatibilität).
+
 ## REST API (Docker)
 
 ```bash
@@ -157,12 +190,23 @@ curl -X POST http://localhost:8000/scan \
   -d '{"text": "Kontakt: hans@example.de, IBAN DE89370400440532013000", "detectors": ["EMAIL", "IBAN"]}'
 ```
 
-## API-Konfiguration
+Mit API-Key-Authentifizierung:
+
+```bash
+curl -X POST http://localhost:8000/scan \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: pg_…" \
+  -d '{"text": "hans@example.de"}'
+```
+
+## Konfiguration
 
 | Variable | Standard | Bedeutung |
 |---|---|---|
-| `API_KEY` | leer | Wenn gesetzt, muss `X-API-Key` mitgesendet werden |
+| `API_KEY` | leer | Wenn gesetzt, muss `X-API-Key` mitgesendet werden (Env-Var-Key oder DB-Key) |
 | `CORS_ORIGINS` | `*` | Kommagetrennte Origins, z. B. `https://app.example.com` |
+| `UI_DB_PATH` | `ui.db` | Pfad zur SQLite-Datenbank (Nutzer, Scans, API-Keys) |
+| `UI_ADMIN_PASSWORD` | `admin` | Passwort des automatisch angelegten Admin-Accounts |
 
 Beispiel:
 
@@ -175,6 +219,13 @@ services:
     environment:
       API_KEY: my-secret-key
       CORS_ORIGINS: https://app.example.com
+      UI_DB_PATH: /data/ui.db
+      UI_ADMIN_PASSWORD: sicher123
+    volumes:
+      - ui_data:/data
+
+volumes:
+  ui_data:
 ```
 
 ## Roadmap-Ideen
