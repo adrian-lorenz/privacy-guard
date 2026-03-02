@@ -15,6 +15,10 @@ class PiiType(str, Enum):
     ADDRESS = "ADDRESS"
     SECRET = "SECRET"
     URL_SECRET = "URL_SECRET"
+    KVNR = "KVNR"
+    LICENSE_PLATE = "LICENSE_PLATE"
+    VAT_ID = "VAT_ID"
+    DRIVER_LICENSE = "DRIVER_LICENSE"
 
 
 @dataclass(frozen=True)

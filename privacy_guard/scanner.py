@@ -13,6 +13,10 @@ from .detectors.social_security import SocialSecurityDetector
 from .detectors.tax_id import TaxIdDetector
 from .detectors.url_secret import UrlSecretDetector
 from .detectors.secret import SecretDetector
+from .detectors.kvnr import KvnrDetector
+from .detectors.license_plate import LicensePlateDetector
+from .detectors.vat_id import VatIdDetector
+from .detectors.driver_license import DriverLicenseDetector
 
 # Priority: higher wins when spans overlap
 _PRIORITY: dict[PiiType, int] = {
@@ -24,7 +28,11 @@ _PRIORITY: dict[PiiType, int] = {
     PiiType.PERSONAL_ID: 4,
     PiiType.TAX_ID: 4,
     PiiType.EMAIL: 4,
+    PiiType.VAT_ID: 4,
+    PiiType.DRIVER_LICENSE: 4,
+    PiiType.KVNR: 5,
     PiiType.PHONE: 3,
+    PiiType.LICENSE_PLATE: 3,
     PiiType.ADDRESS: 2,
     PiiType.NAME: 1,
 }
@@ -79,6 +87,10 @@ class PrivacyScanner:
             PiiType.PHONE: PhoneDetector(),
             PiiType.NAME: NameDetector(whitelist=wl),
             PiiType.ADDRESS: AddressDetector(),
+            PiiType.KVNR: KvnrDetector(),
+            PiiType.VAT_ID: VatIdDetector(),
+            PiiType.DRIVER_LICENSE: DriverLicenseDetector(),
+            PiiType.LICENSE_PLATE: LicensePlateDetector(),
         }
         self._disabled: set[PiiType] = set()
 

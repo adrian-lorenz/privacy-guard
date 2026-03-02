@@ -37,14 +37,18 @@
 | `CREDIT_CARD` | `4111 1111 1111 1111` | Regex + Luhn algorithm |
 | `PERSONAL_ID` | `C22990047` | Regex — Personalausweis & Reisepass (same format) |
 | `SOCIAL_SECURITY` | `12 345678 X 123` | Regex — Rentenversicherungsnummer |
+| `KVNR` | `T123456780` | Regex + §290 SGB V modified-Luhn check digit |
 | `TAX_ID` | `12 345 678 903` | Regex + mod-11 check digit (§ 139b AO) |
+| `VAT_ID` | `DE123456789` | Regex — Umsatzsteuer-Identifikationsnummer |
 | `PHONE` | `+49 89 12345678` | Regex — DACH formats |
 | `EMAIL` | `kontakt@example.de` | Regex |
 | `ADDRESS` | `Hauptstraße 12, 79100 Freiburg` | Regex built from data files |
+| `LICENSE_PLATE` | `B-AB 1234`, `HH-XY 12E` | Regex — Kfz-Kennzeichen inkl. E/H-Suffix |
+| `DRIVER_LICENSE` | `MU010185A1` | Regex + Kontext-Fenster (±200 Zeichen) |
 | `SECRET` | AWS key, GitHub PAT, … | 100+ pattern rules (TOML) |
 | `URL_SECRET` | `?token=abc123def456` | Regex — query parameter values |
 
-**Overlap priority:** `SECRET = URL_SECRET > IBAN = CREDIT_CARD = SOCIAL_SECURITY > PERSONAL_ID = TAX_ID = EMAIL > PHONE > ADDRESS > NAME`
+**Overlap priority:** `SECRET = URL_SECRET > IBAN = CREDIT_CARD = SOCIAL_SECURITY = KVNR > PERSONAL_ID = TAX_ID = VAT_ID = EMAIL = DRIVER_LICENSE > PHONE = LICENSE_PLATE > ADDRESS > NAME`
 
 Public figures are excluded from masking by default via an internal whitelist (~1,000 entries).
 

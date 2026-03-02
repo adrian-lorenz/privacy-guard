@@ -14,10 +14,18 @@ import uvicorn
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Start the privacy-guard API")
-    parser.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")
-    parser.add_argument("--port", type=int, default=8000, help="Bind port (default: 8000)")
-    parser.add_argument("--reload", action="store_true", help="Enable auto-reload on code changes")
-    parser.add_argument("--workers", type=int, default=1, help="Number of worker processes (default: 1)")
+    parser.add_argument(
+        "--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)"
+    )
+    parser.add_argument(
+        "--port", type=int, default=8000, help="Bind port (default: 8000)"
+    )
+    parser.add_argument(
+        "--reload", action="store_true", help="Enable auto-reload on code changes"
+    )
+    parser.add_argument(
+        "--workers", type=int, default=1, help="Number of worker processes (default: 1)"
+    )
     args = parser.parse_args()
 
     uvicorn.run(

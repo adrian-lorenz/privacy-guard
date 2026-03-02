@@ -39,14 +39,18 @@ Kein ML-Inference-Overhead zur Laufzeit für die meisten Detektoren, klare Ergeb
 | `CREDIT_CARD` | `4111 1111 1111 1111` | Regex + Luhn-Algorithmus |
 | `PERSONAL_ID` | `C22990047` | Regex — Personalausweis & Reisepass (gleiches Format) |
 | `SOCIAL_SECURITY` | `12 345678 X 123` | Regex — Rentenversicherungsnummer |
+| `KVNR` | `T123456780` | Regex + § 290 SGB V modifizierte Luhn-Prüfziffer |
 | `TAX_ID` | `12 345 678 903` | Regex + mod-11-Prüfziffer (§ 139b AO) |
+| `VAT_ID` | `DE123456789` | Regex — Umsatzsteuer-Identifikationsnummer |
 | `PHONE` | `+49 89 12345678` | Regex — DACH-Formate |
 | `EMAIL` | `kontakt@example.de` | Regex |
 | `ADDRESS` | `Hauptstraße 12, 79100 Freiburg` | Regex aus Daten-Dateien |
+| `LICENSE_PLATE` | `B-AB 1234`, `HH-XY 12E` | Regex — Kfz-Kennzeichen inkl. E/H-Suffix |
+| `DRIVER_LICENSE` | `MU010185A1` | Regex + Kontext-Fenster (±200 Zeichen) |
 | `SECRET` | AWS-Key, GitHub-PAT, … | 100+ Musterregeln (TOML) |
 | `URL_SECRET` | `?token=abc123def456` | Regex — Query-Parameter-Werte |
 
-**Priorität bei überlappenden Treffern:** `SECRET = URL_SECRET > IBAN = CREDIT_CARD = SOCIAL_SECURITY > PERSONAL_ID = TAX_ID = EMAIL > PHONE > ADDRESS > NAME`
+**Priorität bei überlappenden Treffern:** `SECRET = URL_SECRET > IBAN = CREDIT_CARD = SOCIAL_SECURITY = KVNR > PERSONAL_ID = TAX_ID = VAT_ID = EMAIL = DRIVER_LICENSE > PHONE = LICENSE_PLATE > ADDRESS > NAME`
 
 Personen des öffentlichen Lebens werden per interner Whitelist (~1 000 Einträge) standardmäßig nicht maskiert.
 
