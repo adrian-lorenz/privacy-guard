@@ -19,14 +19,18 @@ from fastapi import (
     status,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.security import APIKeyHeader
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
+import logging
+
 from privacy_guard import PiiType, PrivacyScanner, ScanResult
 from api.proxy_router import router as _proxy_router
+
+log = logging.getLogger("uvicorn.error")
 
 # ── Auth / API key ───────────────────────────────────────────────────────────
 
@@ -130,6 +134,12 @@ def _get_scanner(
 
 app = FastAPI(title="privacy-guard", lifespan=lifespan)
 app.include_router(_proxy_router)
+
+
+@app.exception_handler(Exception)
+async def _global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    log.exception("Unhandled exception on %s %s", request.method, request.url)
+    return JSONResponse(status_code=500, content={"error": str(exc)})
 
 _CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",")]
 app.add_middleware(

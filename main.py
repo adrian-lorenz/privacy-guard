@@ -34,6 +34,7 @@ def main() -> None:
         port=args.port,
         reload=args.reload,
         workers=args.workers if not args.reload else 1,
+        log_level="debug",
     )
 
 

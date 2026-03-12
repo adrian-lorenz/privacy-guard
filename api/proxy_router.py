@@ -1,26 +1,41 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
+
+log = logging.getLogger("uvicorn.error")
 
 import httpx
 from fastapi import APIRouter, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 
-from privacy_guard import PrivacyScanner
+from privacy_guard import PiiType, PrivacyScanner
 
 router = APIRouter()
 _templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 
+_ALL_DETECTOR_TYPES = [t.value for t in PiiType]
 
-def _get_scanner() -> PrivacyScanner:
-    from api.main import _scanner  # reuse the singleton
+# Cache: (frozenset of enabled types) → scanner instance
+_proxy_scanner_cache: tuple[frozenset[str], PrivacyScanner] | None = None
 
-    assert _scanner is not None
-    return _scanner
+
+def _get_proxy_scanner(enabled_types: list[str]) -> PrivacyScanner:
+    global _proxy_scanner_cache
+    key = frozenset(enabled_types)
+    if _proxy_scanner_cache is not None and _proxy_scanner_cache[0] == key:
+        return _proxy_scanner_cache[1]
+    scanner = PrivacyScanner()
+    enabled_pii = {PiiType(t) for t in enabled_types if t in PiiType._value2member_map_}
+    for pii_type in set(PiiType) - enabled_pii:
+        scanner.disable_detector(pii_type)
+    _proxy_scanner_cache = (key, scanner)
+    return scanner
 
 
 # ── Shared anonymization helpers ─────────────────────────────────────────────
@@ -111,6 +126,53 @@ def _anonymize_anthropic_content(
     return content, 0
 
 
+def _anthropic_response_to_sse(data: dict[str, Any]) -> Iterator[str]:
+    """Convert a non-streaming Anthropic response dict to SSE events so keep-alive connections stay intact."""
+    def evt(event: str, payload: Any) -> str:
+        return f"event: {event}\ndata: {json.dumps(payload)}\n\n"
+
+    msg_id   = data.get("id", "msg_proxy")
+    model    = data.get("model", "")
+    usage    = data.get("usage", {})
+    stop     = data.get("stop_reason", "end_turn")
+    content_blocks: list[dict] = data.get("content", [])
+
+    yield evt("message_start", {
+        "type": "message_start",
+        "message": {"id": msg_id, "type": "message", "role": "assistant",
+                    "content": [], "model": model, "stop_reason": None,
+                    "stop_sequence": None,
+                    "usage": {"input_tokens": usage.get("input_tokens", 0), "output_tokens": 0}},
+    })
+    yield evt("ping", {"type": "ping"})
+
+    for i, block in enumerate(content_blocks):
+        btype = block.get("type", "text")
+        yield evt("content_block_start", {
+            "type": "content_block_start", "index": i,
+            "content_block": {"type": btype, "text": "" if btype == "text" else None},
+        })
+        if btype == "text":
+            yield evt("content_block_delta", {
+                "type": "content_block_delta", "index": i,
+                "delta": {"type": "text_delta", "text": block.get("text", "")},
+            })
+        elif btype == "tool_use":
+            yield evt("content_block_delta", {
+                "type": "content_block_delta", "index": i,
+                "delta": {"type": "input_json_delta",
+                          "partial_json": json.dumps(block.get("input", {}))},
+            })
+        yield evt("content_block_stop", {"type": "content_block_stop", "index": i})
+
+    yield evt("message_delta", {
+        "type": "message_delta",
+        "delta": {"stop_reason": stop, "stop_sequence": None},
+        "usage": {"output_tokens": usage.get("output_tokens", 0)},
+    })
+    yield evt("message_stop", {"type": "message_stop"})
+
+
 def _restore_anthropic_response(response_data: dict[str, Any], mapping: dict[str, str]) -> None:
     """Re-identify placeholders in Anthropic response in-place."""
     for block in response_data.get("content", []):
@@ -119,6 +181,21 @@ def _restore_anthropic_response(response_data: dict[str, Any], mapping: dict[str
 
 
 # ── UI routes ────────────────────────────────────────────────────────────────
+
+
+def _proxy_ctx(config: dict, logs: list[dict], base_url: str, **extra: Any) -> dict:
+    try:
+        enabled = json.loads(config.get("enabled_detectors", "[]") or "[]")
+    except Exception:
+        enabled = []
+    return {
+        "config": config,
+        "logs": logs,
+        "base_url": base_url,
+        "enabled_detectors": enabled,
+        "all_detector_types": _ALL_DETECTOR_TYPES,
+        **extra,
+    }
 
 
 def _parse_logs(logs: list[dict]) -> list[dict]:
@@ -138,9 +215,7 @@ async def ui_proxy(request: Request) -> HTMLResponse:
     logs = _parse_logs(get_proxy_logs(limit=50))
     base_url = str(request.base_url).rstrip("/")
     return _templates.TemplateResponse(
-        request,
-        "_proxy.html",
-        {"config": config, "logs": logs, "base_url": base_url},
+        request, "_proxy.html", _proxy_ctx(config, logs, base_url)
     )
 
 
@@ -153,8 +228,13 @@ async def ui_proxy_config_save(
     proxy_enabled: str = Form(default="0"),
     anonymize_enabled: str = Form(default="0"),
     restore_enabled: str = Form(default="0"),
+    enabled_detectors: Annotated[list[str], Form()] = [],
 ) -> HTMLResponse:
     from api.db import get_proxy_config, get_proxy_logs, save_proxy_config
+
+    # Invalidate cached scanner when detectors change
+    global _proxy_scanner_cache
+    _proxy_scanner_cache = None
 
     save_proxy_config(
         {
@@ -164,15 +244,14 @@ async def ui_proxy_config_save(
             "proxy_enabled": proxy_enabled,
             "anonymize_enabled": anonymize_enabled,
             "restore_enabled": restore_enabled,
+            "enabled_detectors": json.dumps(enabled_detectors),
         }
     )
     config = get_proxy_config()
     logs = _parse_logs(get_proxy_logs(limit=50))
     base_url = str(request.base_url).rstrip("/")
     return _templates.TemplateResponse(
-        request,
-        "_proxy.html",
-        {"config": config, "logs": logs, "base_url": base_url, "saved": True},
+        request, "_proxy.html", _proxy_ctx(config, logs, base_url, saved=True)
     )
 
 
@@ -200,7 +279,9 @@ async def proxy_chat_completions(request: Request) -> JSONResponse:
         return JSONResponse(status_code=503, content={"error": {"message": "Proxy is disabled"}})
 
     target_url = config.get("target_url", "https://api.openai.com").rstrip("/")
-    target_api_key = config.get("target_api_key", "")
+    # Prefer incoming Authorization header (client's own key), fall back to configured key
+    incoming_auth = request.headers.get("authorization", "")
+    target_api_key = incoming_auth.removeprefix("Bearer ").strip() or config.get("target_api_key", "")
     anonymize_enabled = config.get("anonymize_enabled", "1") == "1"
     restore_enabled = config.get("restore_enabled", "1") == "1"
 
@@ -220,15 +301,16 @@ async def proxy_chat_completions(request: Request) -> JSONResponse:
 
     try:
         if anonymize_enabled:
+            enabled = json.loads(config.get("enabled_detectors", "[]") or "[]")
             anon_msgs, total_pii = _anonymize_openai_messages(
-                messages, _get_scanner(), combined_mapping, pii_types_found
+                messages, _get_proxy_scanner(enabled), combined_mapping, pii_types_found
             )
             forward_body = {**body, "messages": anon_msgs}
         else:
             forward_body = body
 
-        if restore_enabled and forward_body.get("stream"):
-            forward_body = {**forward_body, "stream": False}
+        # Always disable streaming — we parse the response as JSON
+        forward_body = {**forward_body, "stream": False}
 
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(
@@ -252,13 +334,18 @@ async def proxy_chat_completions(request: Request) -> JSONResponse:
             pii_types=pii_types_found, duration_ms=duration_ms,
             status_code=status_code, error=None,
         )
-        return JSONResponse(status_code=status_code, content=response_data)
+        return JSONResponse(
+            status_code=status_code,
+            content=response_data,
+            headers={"Connection": "close"},
+        )
 
     except httpx.ConnectError as exc:
         error_msg, status_code = f"Upstream unreachable: {exc}", 502
     except httpx.TimeoutException:
         error_msg, status_code = "Upstream timeout", 504
     except Exception as exc:
+        log.exception("proxy /v1/chat/completions error")
         error_msg, status_code = str(exc), 500
 
     duration_ms = (time.monotonic() - t0) * 1000
@@ -278,13 +365,31 @@ async def proxy_chat_completions(request: Request) -> JSONResponse:
 
 @router.post("/proxy/v1/messages")
 async def proxy_messages(request: Request) -> JSONResponse:
+    try:
+        return await _proxy_messages(request)
+    except BaseException as exc:
+        log.exception("UNHANDLED proxy /v1/messages error: %s", type(exc).__name__)
+        return JSONResponse(status_code=500, content={"error": {"message": "proxy internal error"}})
+
+
+async def _proxy_messages(request: Request) -> JSONResponse:
     from api.db import get_proxy_config, save_proxy_log
+
+    raw = await request.body()
+    log.debug("→ /v1/messages body (%d bytes): %s", len(raw), raw[:500])
 
     config = get_proxy_config()
     if config.get("proxy_enabled", "1") != "1":
         return JSONResponse(status_code=503, content={"error": {"message": "Proxy is disabled"}})
 
-    anthropic_api_key = config.get("anthropic_api_key", "") or config.get("target_api_key", "")
+    # Claude Code sends key as "Authorization: Bearer sk-ant-..." or "x-api-key: sk-ant-..."
+    incoming_auth = request.headers.get("authorization", "").removeprefix("Bearer ").strip()
+    anthropic_api_key = (
+        request.headers.get("x-api-key", "")
+        or incoming_auth
+        or config.get("anthropic_api_key", "")
+        or config.get("target_api_key", "")
+    )
     anonymize_enabled = config.get("anonymize_enabled", "1") == "1"
     restore_enabled = config.get("restore_enabled", "1") == "1"
 
@@ -294,6 +399,7 @@ async def proxy_messages(request: Request) -> JSONResponse:
         return JSONResponse(status_code=400, content={"error": {"message": "Invalid JSON"}})
 
     model = body.get("model", "unknown")
+    client_wants_stream = bool(body.get("stream", False))
     messages: list[dict[str, Any]] = body.get("messages", [])
     combined_mapping: dict[str, str] = {}
     pii_types_found: list[str] = []
@@ -304,7 +410,8 @@ async def proxy_messages(request: Request) -> JSONResponse:
 
     try:
         if anonymize_enabled:
-            scanner = _get_scanner()
+            enabled = json.loads(config.get("enabled_detectors", "[]") or "[]")
+            scanner = _get_proxy_scanner(enabled)
             # Anonymize system prompt
             forward_body = dict(body)
             system = body.get("system", "")
@@ -330,45 +437,95 @@ async def proxy_messages(request: Request) -> JSONResponse:
         else:
             forward_body = body
 
-        if restore_enabled and forward_body.get("stream"):
-            forward_body = {**forward_body, "stream": False}
+        # Forward all anthropic-* headers from client; inject our key
+        _SKIP = frozenset(["host", "content-length", "transfer-encoding", "connection"])
+        forward_headers: dict[str, str] = {"content-type": "application/json", "x-api-key": anthropic_api_key}
+        for name, value in request.headers.items():
+            name_l = name.lower()
+            if name_l.startswith("anthropic-") and name_l not in _SKIP:
+                forward_headers[name_l] = value
+        if "anthropic-version" not in forward_headers:
+            forward_headers["anthropic-version"] = "2023-06-01"
 
-        # Pass through anthropic-specific headers from the incoming request
-        incoming_headers = dict(request.headers)
-        forward_headers: dict[str, str] = {
-            "Content-Type": "application/json",
-            "x-api-key": anthropic_api_key,
-            "anthropic-version": incoming_headers.get("anthropic-version", "2023-06-01"),
-        }
-        if "anthropic-beta" in incoming_headers:
-            forward_headers["anthropic-beta"] = incoming_headers["anthropic-beta"]
+        # Forward query params (e.g. ?beta=true)
+        target_path = "https://api.anthropic.com/v1/messages"
+        qs = str(request.url.query)
+        if qs:
+            target_path = f"{target_path}?{qs}"
 
+        # Serialize forward body — use ensure_ascii=False to preserve original encoding
+        body_modified = anonymize_enabled and total_pii > 0
+        send_bytes = json.dumps(forward_body if body_modified else body,
+                                ensure_ascii=False).encode()
+
+        log.debug("→ Anthropic headers: %s | body_modified=%s size=%d",
+                  list(forward_headers.keys()), body_modified, len(send_bytes))
+
+        # Stream from Anthropic and buffer SSE events so we can re-identify
+        sse_chunks: list[str] = []
+        status_code = 200
         async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                json=forward_body,
-                headers=forward_headers,
-            )
+            async with client.stream("POST", target_path, content=send_bytes,
+                                     headers=forward_headers) as resp:
+                status_code = resp.status_code
+                log.info("← Anthropic %d", status_code)
+                async for chunk in resp.aiter_text():
+                    sse_chunks.append(chunk)
 
-        status_code = resp.status_code
-        response_data = resp.json()
+        raw_response = "".join(sse_chunks)
 
+        # Non-streaming response: parse as JSON
+        if not client_wants_stream:
+            try:
+                response_data = json.loads(raw_response)
+            except Exception:
+                response_data = {"error": raw_response}
+            if restore_enabled and combined_mapping and status_code == 200:
+                _restore_anthropic_response(response_data, combined_mapping)
+            duration_ms = (time.monotonic() - t0) * 1000
+            save_proxy_log(model=model, message_count=len(messages), pii_count=total_pii,
+                           pii_types=pii_types_found, duration_ms=duration_ms,
+                           status_code=status_code, error=None)
+            return JSONResponse(status_code=status_code, content=response_data,
+                                headers={"Connection": "close"})
+
+        # Streaming response: re-identify placeholders in text_delta events, then re-stream
         if restore_enabled and combined_mapping and status_code == 200:
-            _restore_anthropic_response(response_data, combined_mapping)
+            patched_chunks: list[str] = []
+            for chunk in sse_chunks:
+                if '"text_delta"' in chunk and combined_mapping:
+                    for placeholder, original in combined_mapping.items():
+                        chunk = chunk.replace(
+                            json.dumps(placeholder)[1:-1],  # JSON-escaped placeholder
+                            json.dumps(original)[1:-1],     # JSON-escaped original
+                        )
+                patched_chunks.append(chunk)
+            sse_chunks = patched_chunks
+
+        async def _stream_chunks() -> Any:
+            for chunk in sse_chunks:
+                yield chunk
 
         duration_ms = (time.monotonic() - t0) * 1000
-        save_proxy_log(
-            model=model, message_count=len(messages), pii_count=total_pii,
-            pii_types=pii_types_found, duration_ms=duration_ms,
-            status_code=status_code, error=None,
+        save_proxy_log(model=model, message_count=len(messages), pii_count=total_pii,
+                       pii_types=pii_types_found, duration_ms=duration_ms,
+                       status_code=status_code, error=None)
+        return StreamingResponse(
+            _stream_chunks(),
+            status_code=status_code,
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no",
+                     "Connection": "close"},
         )
-        return JSONResponse(status_code=status_code, content=response_data)
 
     except httpx.ConnectError as exc:
         error_msg, status_code = f"Upstream unreachable: {exc}", 502
+        log.error("proxy /v1/messages connect error: %s", exc)
     except httpx.TimeoutException:
         error_msg, status_code = "Upstream timeout", 504
+        log.error("proxy /v1/messages timeout")
     except Exception as exc:
+        log.exception("proxy /v1/messages unhandled error")
         error_msg, status_code = str(exc), 500
 
     duration_ms = (time.monotonic() - t0) * 1000

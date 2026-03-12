@@ -691,7 +691,7 @@ wheels = [
 
 [[package]]
 name = "privacy-guard-scanner"
-version = "1.1.0"
+version = "1.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "spacy" },
@@ -702,6 +702,7 @@ dependencies = [
 api = [
     { name = "bcrypt" },
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "jinja2" },
     { name = "pydantic" },
     { name = "python-multipart" },
@@ -725,6 +726,7 @@ dev = [
 requires-dist = [
     { name = "bcrypt", marker = "extra == 'api'", specifier = ">=4.0" },
     { name = "fastapi", marker = "extra == 'api'", specifier = ">=0.135.1" },
+    { name = "httpx", marker = "extra == 'api'", specifier = ">=0.27" },
     { name = "jinja2", marker = "extra == 'api'", specifier = ">=3.1" },
     { name = "pydantic", marker = "extra == 'api'", specifier = ">=2.0" },
     { name = "python-multipart", marker = "extra == 'api'", specifier = ">=0.0.9" },

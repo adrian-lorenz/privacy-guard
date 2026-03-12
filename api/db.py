@@ -226,6 +226,13 @@ def check_api_key(raw_key: str) -> bool:
     return True
 
 
+_DEFAULT_ENABLED_DETECTORS = json.dumps([
+    "NAME", "IBAN", "CREDIT_CARD", "PERSONAL_ID", "SOCIAL_SECURITY",
+    "KVNR", "TAX_ID", "VAT_ID", "PHONE", "EMAIL", "ADDRESS",
+    "LICENSE_PLATE", "DRIVER_LICENSE",
+])
+
+
 def get_proxy_config() -> dict[str, str]:
     with _conn() as con:
         rows = con.execute("SELECT key, value FROM proxy_config").fetchall()
@@ -233,8 +240,10 @@ def get_proxy_config() -> dict[str, str]:
         "proxy_enabled": "1",
         "target_url": "https://api.openai.com",
         "target_api_key": "",
+        "anthropic_api_key": "",
         "anonymize_enabled": "1",
         "restore_enabled": "1",
+        "enabled_detectors": _DEFAULT_ENABLED_DETECTORS,
     }
     return {**defaults, **{r["key"]: r["value"] for r in rows}}
 
