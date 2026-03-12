@@ -35,6 +35,11 @@
             hx-target="#content"
             hx-swap="innerHTML"
             onclick="setActive(this)">&#x1F4CA; Dashboard</button>
+    <button class="tab-btn"
+            hx-get="/ui/proxy"
+            hx-target="#content"
+            hx-swap="innerHTML"
+            onclick="setActive(this)">&#x1F310; Proxy</button>
     {% if user.role == 'admin' %}
     <button class="tab-btn"
             hx-get="/ui/apikeys"

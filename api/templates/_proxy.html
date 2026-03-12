@@ -1,0 +1,139 @@
+<div id="proxy-fragment">
+  <h2>&#x1F310; Proxy</h2>
+
+  {% if saved %}
+  <div class="alert alert-success">&#x2705; Konfiguration gespeichert.</div>
+  {% endif %}
+
+  <div class="two-col" style="align-items:start">
+
+    <!-- Config Card -->
+    <div class="card">
+      <h3>Konfiguration</h3>
+      <form hx-post="/ui/proxy/config"
+            hx-target="#proxy-fragment"
+            hx-swap="outerHTML">
+
+        <label>
+          OpenAI-kompatibler Ziel-Server
+          <select name="target_url" id="target-url-select" onchange="updateCustomUrl(this)">
+            <option value="https://api.openai.com"
+              {% if config.target_url == 'https://api.openai.com' %}selected{% endif %}>
+              OpenAI (api.openai.com)
+            </option>
+            <option value="custom"
+              {% if config.target_url not in ['https://api.openai.com'] %}selected{% endif %}>
+              Custom&hellip;
+            </option>
+          </select>
+        </label>
+        <div id="custom-url-wrap"
+             style="{% if config.target_url in ['https://api.openai.com'] %}display:none{% endif %}">
+          <label>
+            Custom URL
+            <input type="url" name="target_url_custom"
+                   placeholder="https://my-openai-proxy.internal"
+                   value="{% if config.target_url not in ['https://api.openai.com'] %}{{ config.target_url }}{% endif %}">
+          </label>
+        </div>
+        <label>
+          OpenAI API Key
+          <input type="password" name="target_api_key"
+                 placeholder="sk-..." autocomplete="off"
+                 value="{{ config.target_api_key }}">
+        </label>
+
+        <label style="margin-top:.75rem">
+          Anthropic API Key <span style="color:#6c757d;font-weight:400">(f&uuml;r Claude Code / /v1/messages)</span>
+          <input type="password" name="anthropic_api_key"
+                 placeholder="sk-ant-..." autocomplete="off"
+                 value="{{ config.anthropic_api_key or '' }}">
+        </label>
+
+        <div class="toggle-row" style="margin-top:.75rem">
+          <label class="toggle-label">
+            <input type="hidden" name="proxy_enabled" value="0">
+            <input type="checkbox" name="proxy_enabled" value="1"
+                   {% if config.proxy_enabled == '1' %}checked{% endif %}>
+            Proxy aktiv
+          </label>
+          <label class="toggle-label">
+            <input type="hidden" name="anonymize_enabled" value="0">
+            <input type="checkbox" name="anonymize_enabled" value="1"
+                   {% if config.anonymize_enabled == '1' %}checked{% endif %}>
+            Anfragen anonymisieren
+          </label>
+          <label class="toggle-label">
+            <input type="hidden" name="restore_enabled" value="0">
+            <input type="checkbox" name="restore_enabled" value="1"
+                   {% if config.restore_enabled == '1' %}checked{% endif %}>
+            Antworten re-identifizieren
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top:1rem">
+          Speichern
+        </button>
+      </form>
+    </div>
+
+    <!-- Usage Card -->
+    <div class="card">
+      <h3>Verwendung</h3>
+
+      <p class="section-label">OpenAI-kompatible Apps <span class="compat-chips">Cursor &bull; Continue.dev &bull; Open WebUI &bull; OpenCode</span></p>
+      <div class="text-box mono-sm">OPENAI_BASE_URL={{ base_url }}/proxy</div>
+
+      <p class="section-label" style="margin-top:1rem">Claude Code</p>
+      <div class="text-box mono-sm">ANTHROPIC_BASE_URL={{ base_url }}/proxy</div>
+      <p style="color:#6c757d;font-size:.8rem;margin-top:.35rem">
+        Oder dauerhaft in <code>~/.claude/settings.json</code>:
+      </p>
+      <div class="text-box mono-sm">&#123;
+  "env": &#123;
+    "ANTHROPIC_BASE_URL": "{{ base_url }}/proxy"
+  &#125;
+&#125;</div>
+
+      <p class="section-label" style="margin-top:1rem">Endpunkte</p>
+      <table style="margin-bottom:0;font-size:.82rem">
+        <tr>
+          <td><code>POST /proxy/v1/chat/completions</code></td>
+          <td style="color:#6c757d">OpenAI-Format</td>
+        </tr>
+        <tr>
+          <td><code>POST /proxy/v1/messages</code></td>
+          <td style="color:#6c757d">Anthropic-Format</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Live Log -->
+  <div style="margin-top:1.5rem">
+    <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
+      <h3 style="margin:0">Anfragen-Log</h3>
+      <span style="color:#adb5bd;font-size:.8rem">&#x1F504; live &mdash; alle 3&thinsp;s</span>
+    </div>
+    <div id="proxy-logs-wrap"
+         hx-get="/ui/proxy/logs"
+         hx-trigger="every 3s"
+         hx-swap="innerHTML">
+      {% include "_proxy_logs.html" %}
+    </div>
+  </div>
+</div>
+
+<script>
+function updateCustomUrl(sel) {
+  document.getElementById('custom-url-wrap').style.display =
+    sel.value === 'custom' ? '' : 'none';
+}
+document.querySelector('#proxy-fragment form').addEventListener('submit', function() {
+  var sel = document.getElementById('target-url-select');
+  if (sel.value === 'custom') {
+    var custom = document.querySelector('[name=target_url_custom]').value.trim();
+    if (custom) sel.value = custom;
+  }
+});
+</script>

@@ -1,0 +1,50 @@
+{% if logs %}
+<table>
+  <thead>
+    <tr>
+      <th>Zeit</th>
+      <th>Modell</th>
+      <th>Nachrichten</th>
+      <th>PII gefunden</th>
+      <th>PII-Typen</th>
+      <th>Dauer</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for log in logs %}
+    <tr>
+      <td style="white-space:nowrap;color:#6c757d;font-size:.8rem">{{ log.created_at }}</td>
+      <td><code>{{ log.model or '—' }}</code></td>
+      <td style="text-align:center">{{ log.message_count }}</td>
+      <td style="text-align:center">
+        {% if log.pii_count > 0 %}
+        <span class="badge" style="background:#fef9c3;color:#854d0e">{{ log.pii_count }}</span>
+        {% else %}
+        <span style="color:#adb5bd">0</span>
+        {% endif %}
+      </td>
+      <td>
+        {% for t in log.pii_types_list %}
+        <span class="badge badge-{{ t | lower }}">{{ t }}</span>
+        {% endfor %}
+      </td>
+      <td style="color:#6c757d;font-size:.82rem">
+        {% if log.duration_ms %}{{ "%.0f" | format(log.duration_ms) }}&thinsp;ms{% else %}—{% endif %}
+      </td>
+      <td>
+        {% if log.error %}
+        <span class="badge badge-revoked" title="{{ log.error }}">&#x26A0; Fehler</span>
+        {% elif log.status_code == 200 %}
+        <span class="badge badge-active">200 OK</span>
+        {% else %}
+        <span class="badge" style="background:#fee2e2;color:#991b1b">{{ log.status_code or '—' }}</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="info">Noch keine Anfragen &uuml;ber den Proxy geleitet.</p>
+{% endif %}

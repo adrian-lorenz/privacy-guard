@@ -26,6 +26,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
 from privacy_guard import PiiType, PrivacyScanner, ScanResult
+from api.proxy_router import router as _proxy_router
 
 # ── Auth / API key ───────────────────────────────────────────────────────────
 
@@ -128,6 +129,7 @@ def _get_scanner(
 # ── FastAPI app ──────────────────────────────────────────────────────────────
 
 app = FastAPI(title="privacy-guard", lifespan=lifespan)
+app.include_router(_proxy_router)
 
 _CORS_ORIGINS = [o.strip() for o in os.getenv("CORS_ORIGINS", "*").split(",")]
 app.add_middleware(

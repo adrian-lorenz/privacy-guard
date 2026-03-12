@@ -57,6 +57,23 @@ def init_db() -> None:
                 last_used_at TEXT,
                 is_active    INTEGER NOT NULL DEFAULT 1
             );
+
+            CREATE TABLE IF NOT EXISTS proxy_config (
+                key   TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS proxy_logs (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at    TEXT DEFAULT (datetime('now')),
+                model         TEXT,
+                message_count INTEGER NOT NULL DEFAULT 0,
+                pii_count     INTEGER NOT NULL DEFAULT 0,
+                pii_types     TEXT NOT NULL DEFAULT '[]',
+                duration_ms   REAL,
+                status_code   INTEGER,
+                error         TEXT
+            );
         """)
         if con.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
             pw = bcrypt.hashpw(_DEFAULT_ADMIN_PWD.encode(), bcrypt.gensalt()).decode()
@@ -207,6 +224,55 @@ def check_api_key(raw_key: str) -> bool:
             (row["id"],),
         )
     return True
+
+
+def get_proxy_config() -> dict[str, str]:
+    with _conn() as con:
+        rows = con.execute("SELECT key, value FROM proxy_config").fetchall()
+    defaults: dict[str, str] = {
+        "proxy_enabled": "1",
+        "target_url": "https://api.openai.com",
+        "target_api_key": "",
+        "anonymize_enabled": "1",
+        "restore_enabled": "1",
+    }
+    return {**defaults, **{r["key"]: r["value"] for r in rows}}
+
+
+def save_proxy_config(updates: dict[str, str]) -> None:
+    with _conn() as con:
+        for key, value in updates.items():
+            con.execute(
+                "INSERT INTO proxy_config (key, value) VALUES (?, ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (key, value),
+            )
+
+
+def save_proxy_log(
+    model: str | None,
+    message_count: int,
+    pii_count: int,
+    pii_types: list[str],
+    duration_ms: float,
+    status_code: int | None,
+    error: str | None,
+) -> None:
+    with _conn() as con:
+        con.execute(
+            """INSERT INTO proxy_logs
+               (model, message_count, pii_count, pii_types, duration_ms, status_code, error)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (model, message_count, pii_count, json.dumps(pii_types), duration_ms, status_code, error),
+        )
+
+
+def get_proxy_logs(limit: int = 50) -> list[dict]:
+    with _conn() as con:
+        rows = con.execute(
+            "SELECT * FROM proxy_logs ORDER BY created_at DESC LIMIT ?", (limit,)
+        ).fetchall()
+    return [dict(r) for r in rows]
 
 
 def get_totals(user_id: int | None = None) -> dict[str, int]:

@@ -16,6 +16,7 @@
 
 **Highlights**
 - 🔒 Compliance-first: protect sensitive data before it reaches external LLMs
+- 🌐 Built-in proxy: drop-in PII filter for Claude Code, Cursor, Continue.dev, OpenCode and any OpenAI-compatible tool
 - ⚡ Runtime-friendly: regex/rule-based detectors without a heavy inference stack
 - 🔁 Deterministic: stable placeholders plus lossless restoration
 - 🐳 Deploy-ready: Python package and FastAPI/Docker available out of the box
@@ -121,6 +122,74 @@ for finding in secrets:
     print(finding.rule_id, finding.text, finding.confidence)
 ```
 
+## Proxy — Transparent PII Filter for AI Coding Tools
+
+privacy-guard includes an **OpenAI- and Anthropic-compatible reverse proxy** that anonymises every request before it reaches the cloud and optionally re-identifies placeholders in the response. No code changes required in your tools.
+
+### Quick Setup
+
+**1. Start privacy-guard**
+
+```bash
+uvicorn api.main:app --port 8000
+# → http://localhost:8000
+```
+
+**2. Open the Proxy tab** and enter your API key(s) + enable the toggles.
+
+**3. Point your tool at the proxy**
+
+| Tool | Setting |
+|---|---|
+| **Claude Code** | `ANTHROPIC_BASE_URL=http://localhost:8000/proxy` |
+| **Cursor** | `OPENAI_BASE_URL=http://localhost:8000/proxy` in settings |
+| **Continue.dev** | `apiBase: http://localhost:8000/proxy/v1` |
+| **OpenCode** | `"baseURL": "http://localhost:8000/proxy/v1"` in provider config |
+| **Open WebUI** | Custom OpenAI API base URL field |
+
+For **Claude Code** the setting can be made permanent in `~/.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://localhost:8000/proxy"
+  }
+}
+```
+
+### Proxy Endpoints
+
+| Endpoint | Protocol | Used by |
+|---|---|---|
+| `POST /proxy/v1/messages` | Anthropic Messages API | Claude Code |
+| `POST /proxy/v1/chat/completions` | OpenAI Chat Completions API | Cursor, Continue.dev, OpenCode, … |
+
+### How It Works
+
+```
+Your tool → privacy-guard proxy → [PII scan + anonymise] → real API
+                                ← [re-identify in response] ←
+```
+
+1. Every message (including `system`) is scanned — PII is replaced with placeholders like `[NAME_1]`, `[EMAIL_1]`
+2. The anonymised request is forwarded to the real API with your configured key
+3. Placeholders in the response are replaced back with the originals (opt-in)
+4. Every request is logged in the **Proxy** tab with detected PII types, latency and status
+
+### Proxy Configuration
+
+All settings are managed in the **🌐 Proxy** tab of the web UI:
+
+| Setting | Description |
+|---|---|
+| **OpenAI API Key** | Forwarded as `Authorization: Bearer` |
+| **Anthropic API Key** | Forwarded as `x-api-key` (for `/v1/messages`) |
+| **Anonymise requests** | Scan and mask PII before forwarding |
+| **Re-identify responses** | Replace placeholders back in the LLM response |
+| **Proxy active** | Master switch — disable without losing config |
+
+---
+
 ## Web UI
 
 The API server includes a built-in HTMX interface — no separate process, no CDN dependencies.
@@ -135,13 +204,14 @@ uvicorn api.main:app --reload
 ### Login
 
 An `admin` account with password `admin` is created by default (change via `UI_ADMIN_PASSWORD`).
-After login three tabs are available:
+After login the following tabs are available:
 
 | Tab | Description |
 |---|---|
 | **Live Test** | Enter text, select detectors, run a scan — view original and anonymised text side by side |
 | **History** | All your own scans (admins see all users); click a row to see finding details |
 | **Dashboard** | Overall statistics, PII-type bar chart, scans-per-day line chart (Chart.js) |
+| **Proxy** | Configure and monitor the transparent PII proxy; live request log |
 
 Admins additionally see the **API Keys** tab.
 
